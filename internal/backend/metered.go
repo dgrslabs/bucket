@@ -6,9 +6,9 @@ import (
 	"io"
 	"time"
 
-	"github.com/Rhaqim/buckt/internal/domain"
-	"github.com/Rhaqim/buckt/pkg/buckterr"
-	"github.com/Rhaqim/buckt/pkg/metrics"
+	"github.com/dgrslabs/bucket/internal/domain"
+	"github.com/dgrslabs/bucket/pkg/bucketerr"
+	"github.com/dgrslabs/bucket/pkg/metrics"
 )
 
 // meteredBackend wraps a FileBackend and records one metrics.Op per operation
@@ -20,18 +20,18 @@ type meteredBackend struct {
 	rec   metrics.Recorder
 }
 
-// opRecorderSetter is the structural contract buckt checks for so a backend can
-// emit per-API-call metrics WITHOUT importing buckt. The callback signature uses
+// opRecorderSetter is the structural contract bucket checks for so a backend can
+// emit per-API-call metrics WITHOUT importing bucket. The callback signature uses
 // only standard-library types on purpose: a backend satisfies this by declaring
 // a matching method (e.g. the S3 backend's SetOpRecorder), keeping the
-// dependency one-way (buckt → backends, never the reverse).
+// dependency one-way (bucket → backends, never the reverse).
 type opRecorderSetter interface {
 	SetOpRecorder(record func(op string, bytes int64, dur time.Duration, err error))
 }
 
 // NewMeteredBackend wraps inner so each call is recorded to rec. If rec is nil,
 // inner is returned unwrapped (zero overhead). If inner implements
-// opRecorderSetter, buckt injects a callback so the backend can emit its own
+// opRecorderSetter, bucket injects a callback so the backend can emit its own
 // finer-grained (per-API-call) metrics into the same recorder.
 func NewMeteredBackend(inner domain.FileBackend, rec metrics.Recorder) domain.FileBackend {
 	if rec == nil || inner == nil {
@@ -125,7 +125,7 @@ func (m *meteredBackend) DeleteFolder(ctx context.Context, prefix string) error 
 func (m *meteredBackend) PresignGetURL(ctx context.Context, key string, ttl time.Duration) (string, error) {
 	p, ok := m.inner.(domain.PresignBackend)
 	if !ok {
-		return "", fmt.Errorf("backend %q does not support presigned URLs: %w", m.inner.Name(), buckterr.ErrUnsupported)
+		return "", fmt.Errorf("backend %q does not support presigned URLs: %w", m.inner.Name(), bucketerr.ErrUnsupported)
 	}
 	return p.PresignGetURL(ctx, key, ttl)
 }
@@ -144,7 +144,7 @@ func (m *meteredBackend) PresignGetURLWithHeaders(ctx context.Context, key strin
 func (m *meteredBackend) PresignPutURL(ctx context.Context, key string, ttl time.Duration) (string, error) {
 	p, ok := m.inner.(domain.PresignBackend)
 	if !ok {
-		return "", fmt.Errorf("backend %q does not support presigned URLs: %w", m.inner.Name(), buckterr.ErrUnsupported)
+		return "", fmt.Errorf("backend %q does not support presigned URLs: %w", m.inner.Name(), bucketerr.ErrUnsupported)
 	}
 	return p.PresignPutURL(ctx, key, ttl)
 }

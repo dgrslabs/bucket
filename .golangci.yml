@@ -1,6 +1,6 @@
 version: "2"
 
-# Lint policy for buckt. The baseline is golangci-lint's default linter set
+# Lint policy for bucket. The baseline is golangci-lint's default linter set
 # (errcheck, govet, ineffassign, staticcheck, unused). The single project-wide
 # exception is documented below.
 linters:

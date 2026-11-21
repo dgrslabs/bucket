@@ -5,14 +5,14 @@ import (
 	"log"
 	"os"
 
-	"github.com/Rhaqim/buckt"
-	"github.com/Rhaqim/buckt/client/web/app"
-	"github.com/Rhaqim/buckt/client/web/domain"
-	"github.com/Rhaqim/buckt/client/web/middleware"
-	"github.com/Rhaqim/buckt/client/web/router"
+	"github.com/dgrslabs/bucket"
+	"github.com/dgrslabs/bucket/client/web/app"
+	"github.com/dgrslabs/bucket/client/web/domain"
+	"github.com/dgrslabs/bucket/client/web/middleware"
+	"github.com/dgrslabs/bucket/client/web/router"
 )
 
-func NewClient(bucktClient *buckt.Client, conf ...Config) (domain.RouterService, error) {
+func NewClient(bucketClient *bucket.Client, conf ...Config) (domain.RouterService, error) {
 	logger := log.New(os.Stdout, "client: ", log.LstdFlags)
 
 	tmpl, err := loadTemplates()
@@ -20,8 +20,8 @@ func NewClient(bucktClient *buckt.Client, conf ...Config) (domain.RouterService,
 		return nil, fmt.Errorf("failed to load templates: %w", err)
 	}
 
-	apiService := app.NewAPIService(bucktClient)
-	webService := app.NewWebService(bucktClient)
+	apiService := app.NewAPIService(bucketClient)
+	webService := app.NewWebService(bucketClient)
 
 	mode := WebModeAll
 	debug := false

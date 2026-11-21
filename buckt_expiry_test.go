@@ -1,4 +1,4 @@
-package buckt
+package bucket
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Rhaqim/buckt/pkg/events"
+	"github.com/dgrslabs/bucket/pkg/events"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

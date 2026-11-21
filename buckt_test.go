@@ -1,4 +1,4 @@
-package buckt
+package bucket
 
 import (
 	"bytes"
@@ -8,14 +8,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Rhaqim/buckt/internal/backend"
-	"github.com/Rhaqim/buckt/internal/database"
-	"github.com/Rhaqim/buckt/internal/domain"
-	"github.com/Rhaqim/buckt/internal/mocks"
-	"github.com/Rhaqim/buckt/internal/model"
-	"github.com/Rhaqim/buckt/pkg/events"
-	"github.com/Rhaqim/buckt/pkg/imageproc"
-	"github.com/Rhaqim/buckt/pkg/metrics"
+	"github.com/dgrslabs/bucket/internal/backend"
+	"github.com/dgrslabs/bucket/internal/database"
+	"github.com/dgrslabs/bucket/internal/domain"
+	"github.com/dgrslabs/bucket/internal/mocks"
+	"github.com/dgrslabs/bucket/internal/model"
+	"github.com/dgrslabs/bucket/pkg/events"
+	"github.com/dgrslabs/bucket/pkg/imageproc"
+	"github.com/dgrslabs/bucket/pkg/metrics"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +26,7 @@ import (
 /* Shared real-DB test harness                                        */
 /*                                                                    */
 /* newTestClient builds a real Client (real services, not mocks) for  */
-/* the integration-style suites in the buckt_*_test.go files. It      */
+/* the integration-style suites in the bucket_*_test.go files. It      */
 /* replaces the five near-identical per-file constructors these tests */
 /* used to carry. Defaults: SQLite (temp file), temp media dir,       */
 /* silent logs, flat namespaces, no size limit. Override via options. */
@@ -93,11 +93,11 @@ func pgDSN(t *testing.T) string {
 	return dsn
 }
 
-// dropBucktTables clears any existing buckt schema so a Postgres test starts
+// dropBucketTables clears any existing bucket schema so a Postgres test starts
 // from a fresh slate (and re-runs the migrations cleanly).
-func dropBucktTables(t *testing.T, sqlDB *sql.DB) {
+func dropBucketTables(t *testing.T, sqlDB *sql.DB) {
 	t.Helper()
-	for _, tbl := range []string{"file_models", "folder_models", "buckt_schema_migrations", "buckt_migration_models"} {
+	for _, tbl := range []string{"file_models", "folder_models", "bucket_schema_migrations", "bucket_migration_models"} {
 		_, err := sqlDB.Exec("DROP TABLE IF EXISTS " + tbl + " CASCADE")
 		require.NoError(t, err)
 	}
@@ -120,9 +120,9 @@ func newTestClient(t *testing.T, opts ...testClientOption) *Client {
 		sqlDB, err = sql.Open("postgres", pgDSN(t))
 		require.NoError(t, err)
 		t.Cleanup(func() { _ = sqlDB.Close() })
-		dropBucktTables(t, sqlDB)
+		dropBucketTables(t, sqlDB)
 	default:
-		sqlDB, err = sql.Open("sqlite3", filepath.Join(dir, "buckt.db"))
+		sqlDB, err = sql.Open("sqlite3", filepath.Join(dir, "bucket.db"))
 		require.NoError(t, err)
 		t.Cleanup(func() { _ = sqlDB.Close() })
 	}
@@ -144,7 +144,7 @@ func newTestClient(t *testing.T, opts ...testClientOption) *Client {
 	return client
 }
 
-type MockBuckt struct {
+type MockBucket struct {
 	*Client
 	MockFileService   *mocks.FileService
 	MockFolderService *mocks.FolderService
@@ -161,28 +161,28 @@ func memSQLite(t *testing.T) *sql.DB {
 
 // setup builds a Client from the given config and swaps in mock file/folder
 // services. Client cleanup is registered so callers don't repeat it.
-func setup(t *testing.T, bucktOpts Config) MockBuckt {
-	buckt, err := New(bucktOpts)
+func setup(t *testing.T, bucketOpts Config) MockBucket {
+	bucket, err := New(bucketOpts)
 	require.NoError(t, err)
-	require.NotNil(t, buckt)
-	t.Cleanup(func() { _ = buckt.Close() })
+	require.NotNil(t, bucket)
+	t.Cleanup(func() { _ = bucket.Close() })
 
 	mockFileService := new(mocks.FileService)
 	mockFolderService := new(mocks.FolderService)
 
-	buckt.fileService = mockFileService
-	buckt.folderService = mockFolderService
+	bucket.fileService = mockFileService
+	bucket.folderService = mockFolderService
 
-	return MockBuckt{
-		Client:            buckt,
+	return MockBucket{
+		Client:            bucket,
 		MockFileService:   mockFileService,
 		MockFolderService: mockFolderService,
 	}
 }
 
-// setupBucktTest returns a mock-backed Client (in-memory SQLite). Cleanup for
+// setupBucketTest returns a mock-backed Client (in-memory SQLite). Cleanup for
 // both the DB and the Client is registered via t.Cleanup.
-func setupBucktTest(t *testing.T) MockBuckt {
+func setupBucketTest(t *testing.T) MockBucket {
 	return setup(t, Config{
 		DB:             DBConfig{Driver: SQLite, Database: memSQLite(t)},
 		Log:            LogConfig{LogTerminal: false, Silence: false},
@@ -193,24 +193,24 @@ func setupBucktTest(t *testing.T) MockBuckt {
 
 func TestNew(t *testing.T) {
 	t.Run("SQLite with provided instance", func(t *testing.T) {
-		mockBuckt := setupBucktTest(t)
+		mockBucket := setupBucketTest(t)
 
-		assert.NotNil(t, mockBuckt)
+		assert.NotNil(t, mockBucket)
 	})
 
 	t.Run("SQLite without provided instance", func(t *testing.T) {
 		sqlDB := memSQLite(t)
 
-		bucktOpts := Config{
+		bucketOpts := Config{
 			DB:             DBConfig{Driver: SQLite, Database: sqlDB},
 			Log:            LogConfig{LogTerminal: false, Silence: false},
 			MediaDir:       "media",
 			FlatNameSpaces: false,
 		}
 
-		buckt, err := New(bucktOpts)
+		bucket, err := New(bucketOpts)
 		assert.NoError(t, err)
-		assert.NotNil(t, buckt)
+		assert.NotNil(t, bucket)
 	})
 
 	// t.Run("Postgres with provided instance", func(t *testing.T) {
@@ -218,7 +218,7 @@ func TestNew(t *testing.T) {
 	// 	assert.NoError(t, err)
 	// 	defer func() { _ = sqlDB.Close() }()
 
-	// 	bucktOpts := Config{
+	// 	bucketOpts := Config{
 	// 		DB:             DBConfig{Driver: Postgres, Database: sqlDB},
 	// 		Log:            LogConfig{LogTerminal: false, Silence: false},
 	// 		MediaDir:       "media",
@@ -226,15 +226,15 @@ func TestNew(t *testing.T) {
 	// 		FlatNameSpaces: false,
 	// 	}
 
-	// 	buckt, err := New(bucktOpts)
+	// 	bucket, err := New(bucketOpts)
 	// 	// assert.NoError(t, err)
-	// 	// assert.NotNil(t, buckt)
+	// 	// assert.NotNil(t, bucket)
 	// 	assert.Error(t, err) // 🚨 Error: pq: database "postgres" does not exist
-	// 	assert.Nil(t, buckt)
+	// 	assert.Nil(t, bucket)
 	// })
 
 	t.Run("Postgres without provided instance", func(t *testing.T) {
-		bucktOpts := Config{
+		bucketOpts := Config{
 			DB:       DBConfig{Driver: Postgres, Database: nil},
 			Log:      LogConfig{LogTerminal: false, Silence: false},
 			MediaDir: "media",
@@ -242,9 +242,9 @@ func TestNew(t *testing.T) {
 			FlatNameSpaces: false,
 		}
 
-		buckt, err := New(bucktOpts)
+		bucket, err := New(bucketOpts)
 		assert.Error(t, err)
-		assert.Nil(t, buckt)
+		assert.Nil(t, bucket)
 	})
 
 }
@@ -253,10 +253,10 @@ func TestNew(t *testing.T) {
 // succeeded, and registers its cleanup.
 func requireDefault(t *testing.T, opts ...ConfigFunc) {
 	t.Helper()
-	buckt, err := Default(opts...)
+	bucket, err := Default(opts...)
 	require.NoError(t, err)
-	require.NotNil(t, buckt)
-	t.Cleanup(func() { _ = buckt.Close() })
+	require.NotNil(t, bucket)
+	t.Cleanup(func() { _ = bucket.Close() })
 }
 
 // noopCacheConfig is the standard test cache (no-op manager + a valid ristretto
@@ -293,35 +293,35 @@ func TestDefault(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	buckt := setupBucktTest(t)
-	assert.NotNil(t, buckt)
+	bucket := setupBucketTest(t)
+	assert.NotNil(t, bucket)
 
-	assert.NoError(t, buckt.Close())
+	assert.NoError(t, bucket.Close())
 }
 
 func TestNewFolder(t *testing.T) {
-	buckt := setupBucktTest(t)
+	bucket := setupBucketTest(t)
 
 	// Expected folder ID
 	expectedFolderID := "550e8400-e29b-41d4-a716-446655440000"
 
 	// Mocking the CreateFolder method
-	buckt.MockFolderService.On("CreateFolder", "user1", "550e8400-e29b-41d4-a716-446655440001", "folder1", "description1").
+	bucket.MockFolderService.On("CreateFolder", "user1", "550e8400-e29b-41d4-a716-446655440001", "folder1", "description1").
 		Return(expectedFolderID, nil)
 
 	// Call the method
-	actualFolderID, err := buckt.NewFolder("user1", "550e8400-e29b-41d4-a716-446655440001", "folder1", "description1")
+	actualFolderID, err := bucket.NewFolder("user1", "550e8400-e29b-41d4-a716-446655440001", "folder1", "description1")
 
 	// Assertions
 	assert.NoError(t, err)
 	assert.Equal(t, expectedFolderID, actualFolderID) // Compare the expected and actual values
 
 	// Verify mock expectations
-	buckt.MockFolderService.AssertExpectations(t)
+	bucket.MockFolderService.AssertExpectations(t)
 }
 
 func TestListFolders(t *testing.T) {
-	buckt := setupBucktTest(t)
+	bucket := setupBucketTest(t)
 
 	// Mock the expected behavior
 	expectedFolders := []model.FolderModel{
@@ -329,20 +329,20 @@ func TestListFolders(t *testing.T) {
 		{ID: uuid.MustParse("550e8400-e29b-41d4-a716-446655440001"), Name: "folder2", Description: "description2"},
 	}
 
-	buckt.MockFolderService.On("GetFolders", "550e8400-e29b-41d4-a716-446655440002").
+	bucket.MockFolderService.On("GetFolders", "550e8400-e29b-41d4-a716-446655440002").
 		Return(expectedFolders, nil)
 
 	// Call the method
-	folders, err := buckt.ListFolders("550e8400-e29b-41d4-a716-446655440002")
+	folders, err := bucket.ListFolders("550e8400-e29b-41d4-a716-446655440002")
 	assert.NoError(t, err)
 	assert.Equal(t, expectedFolders, folders)
 
 	// Verify expectations
-	buckt.MockFolderService.AssertExpectations(t)
+	bucket.MockFolderService.AssertExpectations(t)
 }
 
 func TestGetFolderWithContent(t *testing.T) {
-	buckt := setupBucktTest(t)
+	bucket := setupBucketTest(t)
 
 	// Mock the expected behavior
 	expectedFolder := model.FolderModel{
@@ -359,82 +359,82 @@ func TestGetFolderWithContent(t *testing.T) {
 		},
 	}
 
-	buckt.MockFolderService.On("GetFolder", "user1", "550e8400-e29b-41d4-a716-446655440000").
+	bucket.MockFolderService.On("GetFolder", "user1", "550e8400-e29b-41d4-a716-446655440000").
 		Return(&expectedFolder, nil)
 
 	// Call the method
-	folder, err := buckt.GetFolderWithContent("user1", "550e8400-e29b-41d4-a716-446655440000")
+	folder, err := bucket.GetFolderWithContent("user1", "550e8400-e29b-41d4-a716-446655440000")
 	assert.NoError(t, err)
 	assert.NotNil(t, folder)
 
 	// Verify expectations
-	buckt.MockFolderService.AssertExpectations(t)
+	bucket.MockFolderService.AssertExpectations(t)
 }
 
 func TestMoveFolder(t *testing.T) {
-	buckt := setupBucktTest(t)
+	bucket := setupBucketTest(t)
 
 	// Mock the expected behavior
-	buckt.MockFolderService.On("MoveFolder", "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001").
+	bucket.MockFolderService.On("MoveFolder", "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001").
 		Return(nil)
 
 	// Call the method
-	err := buckt.MoveFolder("user1", "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001")
+	err := bucket.MoveFolder("user1", "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001")
 	assert.NoError(t, err)
 
 	// Verify expectations
-	buckt.MockFolderService.AssertExpectations(t)
+	bucket.MockFolderService.AssertExpectations(t)
 
 }
 
 func TestDeleteFolder(t *testing.T) {
-	buckt := setupBucktTest(t)
+	bucket := setupBucketTest(t)
 
 	// Mock the expected behavior
-	buckt.MockFolderService.On("DeleteFolder", "550e8400-e29b-41d4-a716-446655440000").
+	bucket.MockFolderService.On("DeleteFolder", "550e8400-e29b-41d4-a716-446655440000").
 		Return("550e8400-e29b-41d4-a716-446655440001", nil)
 
 	// Call the method
-	_, err := buckt.DeleteFolder("550e8400-e29b-41d4-a716-446655440000")
+	_, err := bucket.DeleteFolder("550e8400-e29b-41d4-a716-446655440000")
 	assert.NoError(t, err)
 
 	// Verify expectations
-	buckt.MockFolderService.AssertExpectations(t)
+	bucket.MockFolderService.AssertExpectations(t)
 }
 
 func TestDeleteFolderPermanently(t *testing.T) {
-	buckt := setupBucktTest(t)
+	bucket := setupBucketTest(t)
 
 	// Mock the expected behavior
-	buckt.MockFolderService.On("ScrubFolder", "user1", "550e8400-e29b-41d4-a716-446655440000").
+	bucket.MockFolderService.On("ScrubFolder", "user1", "550e8400-e29b-41d4-a716-446655440000").
 		Return("parent1", nil)
 
 	// Call the method
-	_, err := buckt.DeleteFolderPermanently("user1", "550e8400-e29b-41d4-a716-446655440000")
+	_, err := bucket.DeleteFolderPermanently("user1", "550e8400-e29b-41d4-a716-446655440000")
 	assert.NoError(t, err)
 
 	// Verify expectations
-	buckt.MockFolderService.AssertExpectations(t)
+	bucket.MockFolderService.AssertExpectations(t)
 }
 
 func TestUploadFile(t *testing.T) {
-	buckt := setupBucktTest(t)
+	bucket := setupBucketTest(t)
 
 	// Mock the expected behavior
-	buckt.MockFileService.On("CreateFile", "user1", "folder1", "file1", "text/plain", []byte("file content")).
+	bucket.MockFileService.On("CreateFile", "user1", "folder1", "file1", "text/plain", []byte("file content")).
 		Return("550e8400-e29b-41d4-a716-446655440000", nil)
 
 	// Call the method
-	fileID, err := buckt.UploadFile("user1", "folder1", "file1", "text/plain", []byte("file content"))
+	fileID, err := bucket.UploadFile("user1", "folder1", "file1", "text/plain", []byte("file content"))
 	assert.NoError(t, err)
 	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", fileID)
 
 	// Verify expectations
-	buckt.MockFileService.AssertExpectations(t)
+	bucket.MockFileService.AssertExpectations(t)
 }
 
 func TestGetFile(t *testing.T) {
-	buckt := setupBucktTest(t)
+	bucket := setupBucketTest(t)
 
 	// Mock the expected behavior
 	expectedFile := model.FileModel{
@@ -443,20 +443,20 @@ func TestGetFile(t *testing.T) {
 		ContentType: "text/plain",
 		Data:        []byte("file content"),
 	}
-	buckt.MockFileService.On("GetFile", "550e8400-e29b-41d4-a716-446655440000").
+	bucket.MockFileService.On("GetFile", "550e8400-e29b-41d4-a716-446655440000").
 		Return(&expectedFile, nil)
 
 	// Call the method
-	file, err := buckt.GetFile("550e8400-e29b-41d4-a716-446655440000")
+	file, err := bucket.GetFile("550e8400-e29b-41d4-a716-446655440000")
 	assert.NoError(t, err)
 	assert.NotNil(t, file)
 
 	// Verify expectations
-	buckt.MockFileService.AssertExpectations(t)
+	bucket.MockFileService.AssertExpectations(t)
 }
 
 func TestGetFileStream(t *testing.T) {
-	buckt := setupBucktTest(t)
+	bucket := setupBucketTest(t)
 
 	// Mock the expected behavior
 	expectedFile := model.FileModel{
@@ -467,22 +467,22 @@ func TestGetFileStream(t *testing.T) {
 	}
 	expectedStream := io.NopCloser(bytes.NewReader([]byte("file content")))
 
-	buckt.MockFileService.On("GetFileStream", "550e8400-e29b-41d4-a716-446655440000").
+	bucket.MockFileService.On("GetFileStream", "550e8400-e29b-41d4-a716-446655440000").
 		Return(&expectedFile, expectedStream, nil)
 
 	// Call the method
-	file, stream, err := buckt.GetFileStream("550e8400-e29b-41d4-a716-446655440000")
+	file, stream, err := bucket.GetFileStream("550e8400-e29b-41d4-a716-446655440000")
 	assert.NoError(t, err)
 	assert.NotNil(t, file)
 	assert.NotNil(t, stream)
 	defer func() { _ = stream.Close() }()
 
 	// Verify expectations
-	buckt.MockFileService.AssertExpectations(t)
+	bucket.MockFileService.AssertExpectations(t)
 }
 
 func TestListFilesMetadata(t *testing.T) {
-	buckt := setupBucktTest(t)
+	bucket := setupBucketTest(t)
 
 	// Mock the expected behavior
 	expectedFiles := []model.FileModel{
@@ -490,20 +490,20 @@ func TestListFilesMetadata(t *testing.T) {
 		{ID: uuid.MustParse("550e8400-e29b-41d4-a716-446655440001"), Name: "file2", ContentType: "text/plain", Data: []byte("file content")},
 	}
 
-	buckt.MockFileService.On("GetFilesMetadata", "550e8400-e29b-41d4-a716-446655440002").
+	bucket.MockFileService.On("GetFilesMetadata", "550e8400-e29b-41d4-a716-446655440002").
 		Return(expectedFiles, nil)
 
 	// Call the method
-	files, err := buckt.ListFilesMetadata("550e8400-e29b-41d4-a716-446655440002")
+	files, err := bucket.ListFilesMetadata("550e8400-e29b-41d4-a716-446655440002")
 	assert.NoError(t, err)
 	assert.Equal(t, expectedFiles, files)
 
 	// Verify expectations
-	buckt.MockFileService.AssertExpectations(t)
+	bucket.MockFileService.AssertExpectations(t)
 }
 
 func TestListFiles(t *testing.T) {
-	buckt := setupBucktTest(t)
+	bucket := setupBucketTest(t)
 
 	// Mock the expected behavior
 	expectedFiles := []model.FileModel{
@@ -511,61 +511,61 @@ func TestListFiles(t *testing.T) {
 		{ID: uuid.MustParse("550e8400-e29b-41d4-a716-446655440001"), Name: "file2", ContentType: "text/plain", Data: []byte("file content")},
 	}
 
-	buckt.MockFileService.On("GetFiles", "550e8400-e29b-41d4-a716-446655440002").
+	bucket.MockFileService.On("GetFiles", "550e8400-e29b-41d4-a716-446655440002").
 		Return(expectedFiles, nil)
 
 	// Call the method
-	files, err := buckt.ListFiles("550e8400-e29b-41d4-a716-446655440002")
+	files, err := bucket.ListFiles("550e8400-e29b-41d4-a716-446655440002")
 	assert.NoError(t, err)
 	assert.Equal(t, expectedFiles, files)
 
 	// Verify expectations
-	buckt.MockFileService.AssertExpectations(t)
+	bucket.MockFileService.AssertExpectations(t)
 }
 
 func TestMoveFile(t *testing.T) {
-	buckt := setupBucktTest(t)
+	bucket := setupBucketTest(t)
 
 	// Mock the expected behavior
-	buckt.MockFileService.On("MoveFile", "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001").
+	bucket.MockFileService.On("MoveFile", "550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001").
 		Return(nil)
 
 	// Call the method
-	err := buckt.MoveFile("550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001")
+	err := bucket.MoveFile("550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001")
 	assert.NoError(t, err)
 
 	// Verify expectations
-	buckt.MockFileService.AssertExpectations(t)
+	bucket.MockFileService.AssertExpectations(t)
 }
 
 func TestDeleteFile(t *testing.T) {
-	buckt := setupBucktTest(t)
+	bucket := setupBucketTest(t)
 
 	// Mock the expected behavior
-	buckt.MockFileService.On("DeleteFile", "550e8400-e29b-41d4-a716-446655440000").
+	bucket.MockFileService.On("DeleteFile", "550e8400-e29b-41d4-a716-446655440000").
 		Return("parent1", nil)
 
 	// Call the method
-	_, err := buckt.DeleteFile("550e8400-e29b-41d4-a716-446655440000")
+	_, err := bucket.DeleteFile("550e8400-e29b-41d4-a716-446655440000")
 	assert.NoError(t, err)
 
 	// Verify expectations
-	buckt.MockFileService.AssertExpectations(t)
+	bucket.MockFileService.AssertExpectations(t)
 }
 
 func TestDeleteFilePermanently(t *testing.T) {
-	buckt := setupBucktTest(t)
+	bucket := setupBucketTest(t)
 
 	// Mock the expected behavior
-	buckt.MockFileService.On("ScrubFile", "550e8400-e29b-41d4-a716-446655440000").
+	bucket.MockFileService.On("ScrubFile", "550e8400-e29b-41d4-a716-446655440000").
 		Return("parent1", nil)
 
 	// Call the method
-	_, err := buckt.DeleteFilePermanently("550e8400-e29b-41d4-a716-446655440000")
+	_, err := bucket.DeleteFilePermanently("550e8400-e29b-41d4-a716-446655440000")
 	assert.NoError(t, err)
 
 	// Verify expectations
-	buckt.MockFileService.AssertExpectations(t)
+	bucket.MockFileService.AssertExpectations(t)
 }
 
 func TestInitializeCache(t *testing.T) {

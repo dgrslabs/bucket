@@ -5,9 +5,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/Rhaqim/buckt"
-	"github.com/Rhaqim/buckt/client/web"
-	"github.com/Rhaqim/buckt/pkg/metrics"
+	"github.com/dgrslabs/bucket"
+	"github.com/dgrslabs/bucket/client/web"
+	"github.com/dgrslabs/bucket/pkg/metrics"
 )
 
 func main() {
@@ -21,9 +21,9 @@ func main() {
 	flag.Parse()
 
 	// Enable built-in backend metrics so the /metrics endpoint has data to show.
-	client, err := buckt.Default(buckt.FlatNameSpaces(true), buckt.WithMetrics(metrics.NewCollector()))
+	client, err := bucket.Default(bucket.FlatNameSpaces(true), bucket.WithMetrics(metrics.NewCollector()))
 	if err != nil {
-		log.Fatalf("Failed to initialize Buckt: %v", err)
+		log.Fatalf("Failed to initialize Bucket: %v", err)
 	}
 	defer client.Close() // Ensure resources are cleaned up
 
@@ -36,6 +36,6 @@ func main() {
 
 	// Start the router (optional, based on user choice)
 	if err := webClient.Run(":" + *flagPort); err != nil {
-		log.Fatalf("Failed to start Buckt: %v", err)
+		log.Fatalf("Failed to start Bucket: %v", err)
 	}
 }

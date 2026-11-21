@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/Rhaqim/buckt/internal/model"
+	"github.com/dgrslabs/bucket/internal/model"
 )
 
 type FolderService interface {

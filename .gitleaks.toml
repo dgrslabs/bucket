@@ -1,4 +1,4 @@
-# gitleaks configuration for buckt.
+# gitleaks configuration for bucket.
 #
 # gitleaks scans commits, staged changes, and history for hardcoded secrets
 # (API keys, tokens, private keys). It backs both the pre-commit hook
@@ -10,7 +10,7 @@
 #
 # This file starts from gitleaks' maintained default ruleset and layers a small
 # allowlist on top so example placeholders don't trip the scan.
-title = "buckt"
+title = "bucket"
 
 [extend]
 useDefault = true

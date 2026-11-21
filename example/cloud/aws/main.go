@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Rhaqim/buckt"
-	"github.com/Rhaqim/buckt/cloud/aws"
+	"github.com/dgrslabs/bucket"
+	"github.com/dgrslabs/bucket/cloud/aws"
 )
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 		return
 	}
 
-	client, err := buckt.Default(buckt.WithLog(buckt.LogConfig{}), buckt.WithBackend(awsBackend))
+	client, err := bucket.Default(bucket.WithLog(bucket.LogConfig{}), bucket.WithBackend(awsBackend))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -36,5 +36,5 @@ func main() {
 
 	defer client.Close()
 
-	fmt.Println("Buckt Client initialized successfully")
+	fmt.Println("Bucket Client initialized successfully")
 }

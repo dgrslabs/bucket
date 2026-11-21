@@ -102,9 +102,9 @@
 		const active = "bg-slate-100 dark:bg-slate-700 text-blue-600 dark:text-blue-400";
 		document.getElementById("btn-grid").className = "p-1.5 rounded-md " + (v === "grid" ? active : "text-slate-500");
 		document.getElementById("btn-list").className = "p-1.5 rounded-md " + (v === "list" ? active : "text-slate-500");
-		try { localStorage.setItem("buckt-view", v); } catch (e) {}
+		try { localStorage.setItem("bucket-view", v); } catch (e) {}
 	}
-	setView((function () { try { return localStorage.getItem("buckt-view") || "grid"; } catch (e) { return "grid"; } })());
+	setView((function () { try { return localStorage.getItem("bucket-view") || "grid"; } catch (e) { return "grid"; } })());
 
 	function openModal(type) {
 		const mc = document.getElementById("modal-content");

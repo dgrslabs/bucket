@@ -1,9 +1,9 @@
-// Package main demonstrates buckt's expiring / temp-file API headlessly:
+// Package main demonstrates bucket's expiring / temp-file API headlessly:
 //
 //   - SetFileTTL gives a file a time-to-live (it's permanently deleted when due);
 //   - SetFileExpiry sets an absolute expiry (or clears it with the zero time);
 //   - PurgeExpired deletes everything past due — call it from your own scheduler,
-//     or use buckt.WithExpirySweeper to run it on a background ticker.
+//     or use bucket.WithExpirySweeper to run it on a background ticker.
 //
 // For the UI-driven version (set a TTL from the file menu, watch the sweeper
 // delete it), run the ui example with an interval:  make ui EXPIRY=30s
@@ -17,13 +17,13 @@ import (
 	"log"
 	"time"
 
-	"github.com/Rhaqim/buckt"
+	"github.com/dgrslabs/bucket"
 )
 
 func main() {
 	// Local filesystem storage (./media + ./db.sqlite) is all we need to show
 	// the lifecycle. Silence the banner logs to keep the output readable.
-	client, err := buckt.Default(buckt.WithLog(buckt.LogConfig{Silence: true}))
+	client, err := bucket.Default(bucket.WithLog(bucket.LogConfig{Silence: true}))
 	if err != nil {
 		log.Fatalf("init: %v", err)
 	}
@@ -64,7 +64,7 @@ func main() {
 	log.Printf("purge after expiry: %d file(s) removed (expected 1)", n)
 
 	// 5. The temp file is gone; the permanent file remains.
-	if _, err := client.GetFileContext(ctx, temp); errors.Is(err, buckt.ErrNotFound) {
+	if _, err := client.GetFileContext(ctx, temp); errors.Is(err, bucket.ErrNotFound) {
 		log.Printf("✅ temp.txt was purged")
 	} else {
 		log.Printf("⚠️ temp.txt unexpectedly still present (err=%v)", err)
@@ -76,5 +76,5 @@ func main() {
 	}
 
 	log.Println("Tip: instead of calling PurgeExpired yourself, pass " +
-		"buckt.WithExpirySweeper(interval) and buckt runs it in the background.")
+		"bucket.WithExpirySweeper(interval) and bucket runs it in the background.")
 }

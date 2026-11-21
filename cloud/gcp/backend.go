@@ -54,7 +54,7 @@ func (g *GCPBackend) Name() string {
 }
 
 // altKey returns the leading-slash-stripped form of an object name and whether it
-// differs. buckt's nested-namespace paths carry a leading slash (/user/...), but
+// differs. bucket's nested-namespace paths carry a leading slash (/user/...), but
 // a local -> GCS migration copies objects under the local backend's relative
 // List() names (no leading slash). Reads and deletes try both so objects written
 // by either path resolve. See the aws backend for the full rationale.

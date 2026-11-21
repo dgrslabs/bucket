@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Rhaqim/buckt/internal/constant"
-	"github.com/Rhaqim/buckt/internal/database"
-	"github.com/Rhaqim/buckt/internal/domain"
-	"github.com/Rhaqim/buckt/internal/model"
-	"github.com/Rhaqim/buckt/pkg/buckterr"
+	"github.com/dgrslabs/bucket/internal/constant"
+	"github.com/dgrslabs/bucket/internal/database"
+	"github.com/dgrslabs/bucket/internal/domain"
+	"github.com/dgrslabs/bucket/internal/model"
+	"github.com/dgrslabs/bucket/pkg/bucketerr"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -219,7 +219,7 @@ func (f *FolderRepository) MoveFolder(ctx context.Context, folder_id uuid.UUID, 
 	var newParentFolder model.FolderModel
 	if err := f.db.DB.WithContext(ctx).Where("id = ?", new_parent_id).First(&newParentFolder).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("parent folder not found: %w", buckterr.ErrNotFound)
+			return fmt.Errorf("parent folder not found: %w", bucketerr.ErrNotFound)
 		}
 		return err
 	}
@@ -227,7 +227,7 @@ func (f *FolderRepository) MoveFolder(ctx context.Context, folder_id uuid.UUID, 
 	var folder model.FolderModel
 	if err := f.db.DB.WithContext(ctx).Where("id = ?", folder_id).First(&folder).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("folder not found: %w", buckterr.ErrNotFound)
+			return fmt.Errorf("folder not found: %w", bucketerr.ErrNotFound)
 		}
 		return err
 	}
@@ -266,7 +266,7 @@ func (f *FolderRepository) RenameFolder(ctx context.Context, user_id string, fol
 	var folder model.FolderModel
 	if err := f.db.DB.WithContext(ctx).Where("id = ? AND user_id = ?", folder_id, user_id).First(&folder).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("folder not found: %w", buckterr.ErrNotFound)
+			return fmt.Errorf("folder not found: %w", bucketerr.ErrNotFound)
 		}
 		return err
 	}
@@ -405,7 +405,7 @@ func (f *FolderRepository) RestoreFolder(
 		var dest model.FolderModel
 		if err := tx.Where("id = ?", target).First(&dest).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return fmt.Errorf("restore target folder not found: %w", buckterr.ErrNotFound)
+				return fmt.Errorf("restore target folder not found: %w", bucketerr.ErrNotFound)
 			}
 			return err
 		}
@@ -459,7 +459,7 @@ func (f *FolderRepository) ScrubFolder(ctx context.Context, user_id string, fold
 	var folder model.FolderModel
 	if err := f.db.DB.WithContext(ctx).Where("id = ? AND user_id = ?", folder_id, user_id).First(&folder).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", fmt.Errorf("folder not found: %w", buckterr.ErrNotFound)
+			return "", fmt.Errorf("folder not found: %w", bucketerr.ErrNotFound)
 		}
 		return "", err
 	}
@@ -484,23 +484,23 @@ func uniqueTrashName(ctx context.Context, db *gorm.DB, trashID uuid.UUID, name s
 	})
 }
 
-// asNotFound maps GORM's record-not-found to the public buckterr.ErrNotFound
+// asNotFound maps GORM's record-not-found to the public bucketerr.ErrNotFound
 // sentinel (carrying msg as context), so callers can errors.Is against it
 // without importing gorm. Any other error — including nil — passes through
 // unchanged.
 func asNotFound(err error, msg string) error {
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return fmt.Errorf("%s: %w", msg, buckterr.ErrNotFound)
+		return fmt.Errorf("%s: %w", msg, bucketerr.ErrNotFound)
 	}
 	return err
 }
 
 // asAlreadyExists maps GORM's duplicate-key error (available because the DB is
-// opened with TranslateError) to buckterr.ErrAlreadyExists. Other errors pass
+// opened with TranslateError) to bucketerr.ErrAlreadyExists. Other errors pass
 // through unchanged.
 func asAlreadyExists(err error, msg string) error {
 	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		return fmt.Errorf("%s: %w", msg, buckterr.ErrAlreadyExists)
+		return fmt.Errorf("%s: %w", msg, bucketerr.ErrAlreadyExists)
 	}
 	return err
 }

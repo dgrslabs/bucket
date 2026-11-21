@@ -1,4 +1,4 @@
-module github.com/Rhaqim/buckt
+module github.com/dgrslabs/bucket
 
 go 1.26.0
 
@@ -29,3 +29,6 @@ require (
 	golang.org/x/sys v0.50.0 // indirect
 	golang.org/x/text v0.44.0 // indirect
 )
+
+// v1.0.0 was published with the old module path (github.com/Rhaqim/buckt).
+retract v1.0.0

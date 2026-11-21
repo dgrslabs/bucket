@@ -106,7 +106,7 @@ func TestAzureBackend_Contract_Azurite(t *testing.T) {
 	}
 	containerName := os.Getenv("BUCKT_AZURITE_CONTAINER")
 	if containerName == "" {
-		containerName = "buckt-test"
+		containerName = "bucket-test"
 	}
 
 	be, err := NewBackend(Config{

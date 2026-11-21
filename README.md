@@ -1,33 +1,33 @@
-# Buckt
+# Bucket
 
 > A flexible Go media storage library with pluggable cloud backends, image derivatives, lifecycle events, content dedup, upload scanning, built-in trash, dual-write migration, and an optional web UI.
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/Rhaqim/buckt)](https://goreportcard.com/report/github.com/Rhaqim/buckt)
-[![GoDoc](https://godoc.org/github.com/Rhaqim/buckt?status.svg)](https://pkg.go.dev/github.com/Rhaqim/buckt)
-[![License](https://img.shields.io/github/license/Rhaqim/buckt)](LICENCE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/dgrslabs/bucket)](https://goreportcard.com/report/github.com/dgrslabs/bucket)
+[![GoDoc](https://godoc.org/github.com/dgrslabs/bucket?status.svg)](https://pkg.go.dev/github.com/dgrslabs/bucket)
+[![License](https://img.shields.io/github/license/dgrslabs/bucket)](LICENCE)
 
-Buckt is a media management library for Go applications that need to upload, organize, and manage files without reinventing media handling for every project.
+Bucket is a media management library for Go applications that need to upload, organize, and manage files without reinventing media handling for every project.
 
-Unlike object storage servers such as MinIO, Buckt focuses on the application layer. It provides a consistent API for managing media, folders, metadata, and storage backends, allowing your application to remain independent of where files are ultimately stored.
+Unlike object storage servers such as MinIO, Bucket focuses on the application layer. It provides a consistent API for managing media, folders, metadata, and storage backends, allowing your application to remain independent of where files are ultimately stored.
 
-Out of the box, Buckt supports local filesystem storage with SQLite for development, and can seamlessly switch to Amazon S3, Google Cloud Storage, Azure Blob Storage, Cloudflare R2, or other backends with minimal configuration. Your application code remains unchanged while Buckt handles storage orchestration and media management.
+Out of the box, Bucket supports local filesystem storage with SQLite for development, and can seamlessly switch to Amazon S3, Google Cloud Storage, Azure Blob Storage, Cloudflare R2, or other backends with minimal configuration. Your application code remains unchanged while Bucket handles storage orchestration and media management.
 
-Use Buckt when your application needs more than just object storage—when you need to organize media, manage file metadata, build folder hierarchies, and keep storage concerns separate from your business logic.
+Use Bucket when your application needs more than just object storage—when you need to organize media, manage file metadata, build folder hierarchies, and keep storage concerns separate from your business logic.
 
-Why Buckt instead of MinIO?
+Why Bucket instead of MinIO?
 
-Buckt and MinIO solve different problems.
+Bucket and MinIO solve different problems.
 
 MinIO is an object storage server. It stores and retrieves objects using the S3 API.
 
-Buckt is a media management library. It sits inside your Go application and manages media workflows while using a storage backend such as the local filesystem, Amazon S3, Cloudflare R2, Azure Blob Storage or even MinIO itself.
+Bucket is a media management library. It sits inside your Go application and manages media workflows while using a storage backend such as the local filesystem, Amazon S3, Cloudflare R2, Azure Blob Storage or even MinIO itself.
 
 Think of it this way:
 
 * MinIO answers: “Where should the bytes be stored?”
-* Buckt answers: “How should my application manage media?”
+* Bucket answers: “How should my application manage media?”
 
-Buckt handles concerns such as:
+Bucket handles concerns such as:
 
 * Uploading and serving files
 * Folder organization
@@ -38,7 +38,7 @@ Buckt handles concerns such as:
 
 while delegating the actual storage of file data to your chosen backend.
 
-In fact, Buckt can use MinIO as its storage backend, allowing you to combine MinIO’s object storage capabilities with Buckt’s higher-level media management features.
+In fact, Bucket can use MinIO as its storage backend, allowing you to combine MinIO’s object storage capabilities with Bucket’s higher-level media management features.
 
 ```sh
 ┌─────────────────────────────────────────────────────────────┐
@@ -46,7 +46,7 @@ In fact, Buckt can use MinIO as its storage backend, allowing you to combine Min
 └──────────────────────────┬──────────────────────────────────┘
                            │
                   ┌────────▼─────────┐
-                  │   buckt.Client   │  ◄── direct API or web client
+                  │   bucket.Client   │  ◄── direct API or web client
                   └────────┬─────────┘
             ┌──────────────┼──────────────┐
             │              │              │
@@ -71,7 +71,7 @@ In fact, Buckt can use MinIO as its storage backend, allowing you to combine Min
 
 ## Table of Contents
 
-- [Buckt](#buckt)
+- [Bucket](#bucket)
   - [Table of Contents](#table-of-contents)
   - [Features](#features)
   - [Installation](#installation)
@@ -137,16 +137,16 @@ In fact, Buckt can use MinIO as its storage backend, allowing you to combine Min
 ## Installation
 
 ```bash
-go get github.com/Rhaqim/buckt
+go get github.com/dgrslabs/bucket
 ```
 
 For cloud backends and the web client, install only what you need (each is a separate Go module to keep the core lean):
 
 ```bash
-go get github.com/Rhaqim/buckt/cloud/aws        # AWS S3 + Cloudflare R2
-go get github.com/Rhaqim/buckt/cloud/gcp        # Google Cloud Storage
-go get github.com/Rhaqim/buckt/cloud/azure      # Azure Blob Storage
-go get github.com/Rhaqim/buckt/client/web       # Web UI + HTTP API
+go get github.com/dgrslabs/bucket/cloud/aws        # AWS S3 + Cloudflare R2
+go get github.com/dgrslabs/bucket/cloud/gcp        # Google Cloud Storage
+go get github.com/dgrslabs/bucket/cloud/azure      # Azure Blob Storage
+go get github.com/dgrslabs/bucket/client/web       # Web UI + HTTP API
 ```
 
 ---
@@ -158,11 +158,11 @@ go get github.com/Rhaqim/buckt/client/web       # Web UI + HTTP API
 
   import (
     "log"
-    "github.com/Rhaqim/buckt"
+    "github.com/dgrslabs/bucket"
   )
 
   func main() {
-    client, err := buckt.Default()
+    client, err := bucket.Default()
     if err != nil {
       log.Fatal(err)
     }
@@ -194,10 +194,10 @@ That's it. Files land in `./media`, metadata in `./db.sqlite`, no extra setup.
 
 ## Configuration
 
-Buckt uses a functional-options pattern. All options are optional — `Default()` gives you sensible defaults.
+Bucket uses a functional-options pattern. All options are optional — `Default()` gives you sensible defaults.
 
 ```go
-  client, err := buckt.New(buckt.Config{
+  client, err := bucket.New(bucket.Config{
     MediaDir:       "./media",
     FlatNameSpaces: false,
     MaxFileSize:    100 * 1024 * 1024, // 100MB
@@ -207,13 +207,13 @@ Buckt uses a functional-options pattern. All options are optional — `Default()
 Or with options:
 
 ```go
-  client, err := buckt.Default(
-    buckt.WithLog(buckt.LogConfig{LogTerminal: true, LogFile: "logs"}),
-    buckt.WithDB(buckt.Postgres, sqlDB),
-    buckt.WithBackend(s3Backend),
-    buckt.WithMaxFileSize(buckt.DefaultMaxFileSize),
-    buckt.MediaDir("./uploads"),
-    buckt.FlatNameSpaces(true),
+  client, err := bucket.Default(
+    bucket.WithLog(bucket.LogConfig{LogTerminal: true, LogFile: "logs"}),
+    bucket.WithDB(bucket.Postgres, sqlDB),
+    bucket.WithBackend(s3Backend),
+    bucket.WithMaxFileSize(bucket.DefaultMaxFileSize),
+    bucket.MediaDir("./uploads"),
+    bucket.FlatNameSpaces(true),
   )
 ```
 
@@ -223,7 +223,7 @@ Or with options:
 |---|---|
 | `WithLog(LogConfig)` | Configure terminal/file logging or pass a custom `*log.Logger` |
 | `WithDB(driver, *sql.DB)` | Bring your own database connection (Postgres or SQLite) |
-| `WithTablePrefix(string)` | Prefix buckt's table names to share a database with other apps |
+| `WithTablePrefix(string)` | Prefix bucket's table names to share a database with other apps |
 | `WithCache(CacheConfig)` | Plug in a custom cache manager + tune the LRU file cache |
 | `WithBackend(Backend)` | Set a single storage backend |
 | `WithMigration(MigrationConfig)` | Dual-write migration between two backends |
@@ -260,12 +260,12 @@ Presigning is a **cloud-backend capability**: it works with S3/R2 (`cloud/aws`) 
 
 ```go
   url, err := client.PresignedURL(fileID, ttl)
-  if errors.Is(err, buckt.ErrUnsupported) {
+  if errors.Is(err, bucket.ErrUnsupported) {
     // fall back to streaming via GetFileStream / the /serve handler
   }
 ```
 
-> A presigned URL grants access to whoever holds it — bypassing buckt's own auth — for the whole TTL, so keep the TTL short and don't log the URLs. The web client exposes `GET /presign/:file_id?ttl=15m` (returns 501 when the backend can't presign).
+> A presigned URL grants access to whoever holds it — bypassing bucket's own auth — for the whole TTL, so keep the TTL short and don't log the URLs. The web client exposes `GET /presign/:file_id?ttl=15m` (returns 501 when the backend can't presign).
 
 ### Direct uploads (register / confirm)
 
@@ -281,7 +281,7 @@ The reverse direction: let the client upload **straight to the bucket** so the b
   client.FinalizeUpload(fileID, sizeInBytes)
 ```
 
-Until you finalize, the file is **pending** and hidden from listings. Trade-off: because buckt never sees the bytes on this path, these uploads are **not deduplicated, scanned, or content-hashed**, and image derivatives are generated lazily at finalize (via the upload event). Keep bytes-through-the-backend uploads (`UploadFile`) for anything that needs those; use direct uploads for large/opaque files.
+Until you finalize, the file is **pending** and hidden from listings. Trade-off: because bucket never sees the bytes on this path, these uploads are **not deduplicated, scanned, or content-hashed**, and image derivatives are generated lazily at finalize (via the upload event). Keep bytes-through-the-backend uploads (`UploadFile`) for anything that needs those; use direct uploads for large/opaque files.
 
 Web endpoints for the frontend: `POST /upload/presign` → `{file_id, upload_url}`, then `POST /upload/finalize` (both accept form or JSON). Cloud backends only — `ErrUnsupported`/501 otherwise.
 
@@ -289,7 +289,7 @@ Web endpoints for the frontend: `POST /upload/presign` → `{file_id, upload_url
 
 ## Storage Backends
 
-Buckt's `FileBackend` interface lets you swap storage providers without changing your application code. The cloud backends are separate Go modules, so you only pull in the SDKs you actually use.
+Bucket's `FileBackend` interface lets you swap storage providers without changing your application code. The cloud backends are separate Go modules, so you only pull in the SDKs you actually use.
 
 | Backend | Module | Use Case |
 |---|---|---|
@@ -305,15 +305,15 @@ Buckt's `FileBackend` interface lets you swap storage providers without changing
 The default. No configuration needed.
 
 ```go
-  client, _ := buckt.Default()
+  client, _ := bucket.Default()
 ```
 
 ### AWS S3
 
 ```go
   import (
-    "github.com/Rhaqim/buckt"
-    "github.com/Rhaqim/buckt/cloud/aws"
+    "github.com/dgrslabs/bucket"
+    "github.com/dgrslabs/bucket/cloud/aws"
   )
 
   s3, err := aws.NewBackend(aws.Config{
@@ -324,7 +324,7 @@ The default. No configuration needed.
   })
   if err := s3.Ping(ctx); err != nil { /* fail fast on bad credentials */ }
 
-  client, _ := buckt.Default(buckt.WithBackend(s3))
+  client, _ := bucket.Default(bucket.WithBackend(s3))
 ```
 
 ### Cloudflare R2
@@ -340,26 +340,26 @@ R2 is S3-compatible. The `cloud/aws` backend auto-detects R2 from the endpoint s
     // Region auto-defaults to "auto" — leave empty
   })
 
-  client, _ := buckt.Default(buckt.WithBackend(r2))
+  client, _ := bucket.Default(bucket.WithBackend(r2))
 ```
 
 ### Google Cloud Storage
 
 ```go
-  import "github.com/Rhaqim/buckt/cloud/gcp"
+  import "github.com/dgrslabs/bucket/cloud/gcp"
 
   gcs, _ := gcp.NewBackend(gcp.Config{
     CredentialsFile: "service-account.json",
     Bucket:          "my-bucket",
   })
 
-  client, _ := buckt.Default(buckt.WithBackend(gcs))
+  client, _ := bucket.Default(bucket.WithBackend(gcs))
 ```
 
 ### Azure Blob Storage
 
 ```go
-  import "github.com/Rhaqim/buckt/cloud/azure"
+  import "github.com/dgrslabs/bucket/cloud/azure"
 
   az, _ := azure.NewBackend(azure.Config{
     AccountName: "myaccount",
@@ -367,7 +367,7 @@ R2 is S3-compatible. The `cloud/aws` backend auto-detects R2 from the endpoint s
     Container:   "my-container",
   })
 
-  client, _ := buckt.Default(buckt.WithBackend(az))
+  client, _ := bucket.Default(bucket.WithBackend(az))
 ```
 
 All cloud backends expose a `Ping(ctx)` method for early connectivity validation — call it after `NewBackend` to surface credential or network issues at startup instead of on the first upload.
@@ -376,7 +376,7 @@ All cloud backends expose a `Ping(ctx)` method for early connectivity validation
 
 ## Migration Between Backends
 
-Need to move from local storage to S3 without downtime? Or from S3 to R2 to save on egress fees? Buckt's migration mode does dual-write reads from both backends with lazy forward migration on read.
+Need to move from local storage to S3 without downtime? Or from S3 to R2 to save on egress fees? Bucket's migration mode does dual-write reads from both backends with lazy forward migration on read.
 
 ```sh
               ┌───────────┐    Put   ┌──────────────┐
@@ -393,14 +393,14 @@ Need to move from local storage to S3 without downtime? Or from S3 to R2 to save
 
 ```go
   import (
-    "github.com/Rhaqim/buckt"
-    "github.com/Rhaqim/buckt/cloud/aws"
+    "github.com/dgrslabs/bucket"
+    "github.com/dgrslabs/bucket/cloud/aws"
   )
 
   s3, _ := aws.NewBackend(s3Config)
 
-  client, _ := buckt.Default(buckt.WithMigration(buckt.MigrationConfig{
-    From: buckt.LocalBackend(),  // current source of truth
+  client, _ := bucket.Default(bucket.WithMigration(bucket.MigrationConfig{
+    From: bucket.LocalBackend(),  // current source of truth
     To:   s3,                    // target backend
   }))
 ```
@@ -445,8 +445,8 @@ Migration is **always forward** (primary → secondary). The primary is treated 
 `MigrateAll` copies files **concurrently** with a bounded worker pool. Tune it for a high-latency target with `Concurrency` (default 8):
 
 ```go
-  client, _ := buckt.Default(buckt.WithMigration(buckt.MigrationConfig{
-    From:        buckt.LocalBackend(),
+  client, _ := bucket.Default(bucket.WithMigration(bucket.MigrationConfig{
+    From:        bucket.LocalBackend(),
     To:          s3,
     Concurrency: 16, // more parallelism → faster, but more memory + API pressure
   }))
@@ -454,13 +454,13 @@ Migration is **always forward** (primary → secondary). The primary is treated 
 
 Each in-flight file is buffered in full, so higher concurrency trades memory and provider rate-limit headroom for throughput.
 
-**Resumable.** In migration mode buckt records each copied object in the database (the `buckt_migration_models` table). If the process stops mid-migration, the next `MigrateAll` **resumes from where it left off** — already-copied files are skipped straight from the persisted state, without re-scanning the target. Progress (`MigrationStatus`) reflects the recorded state, so a restarted migration doesn't start its count from zero. Persistence is best-effort: a recording failure never fails a copy (copies are idempotent), and the state is keyed by the target backend's name.
+**Resumable.** In migration mode bucket records each copied object in the database (the `bucket_migration_models` table). If the process stops mid-migration, the next `MigrateAll` **resumes from where it left off** — already-copied files are skipped straight from the persisted state, without re-scanning the target. Progress (`MigrationStatus`) reflects the recorded state, so a restarted migration doesn't start its count from zero. Persistence is best-effort: a recording failure never fails a copy (copies are idempotent), and the state is keyed by the target backend's name.
 
 `client.BackendName()` reports the active backend (`"local"`, `"s3"`, or `"local->s3"` mid-migration) — handy for a status badge. When you're done migrating, swap to the target alone:
 
 ```go
   // After migration completes
-  client, _ := buckt.Default(buckt.WithBackend(s3)) // primary only
+  client, _ := bucket.Default(bucket.WithBackend(s3)) // primary only
 ```
 
 | Method | Description |
@@ -477,10 +477,10 @@ Each in-flight file is buffered in full, so higher concurrency trades memory and
 Generate resized image variants (thumbnails, medium sizes, …) from uploads. Define the variants once; the built-in pure-Go processor handles JPEG and PNG with no external dependencies.
 
 ```go
-  client, _ := buckt.Default(
-    buckt.WithImageDerivatives(
-      buckt.DerivativeSpec{Name: "thumbnail", MaxWidth: 200},
-      buckt.DerivativeSpec{Name: "medium", MaxWidth: 800},
+  client, _ := bucket.Default(
+    bucket.WithImageDerivatives(
+      bucket.DerivativeSpec{Name: "thumbnail", MaxWidth: 200},
+      bucket.DerivativeSpec{Name: "medium", MaxWidth: 800},
     ),
   )
 
@@ -503,16 +503,16 @@ Generate resized image variants (thumbnails, medium sizes, …) from uploads. De
 **WebP** support lives in a separate module so the core stays dependency-free:
 
 ```bash
-go get github.com/Rhaqim/buckt/imageproc/webp
+go get github.com/dgrslabs/bucket/imageproc/webp
 ```
 
 ```go
-  import "github.com/Rhaqim/buckt/imageproc/webp"
+  import "github.com/dgrslabs/bucket/imageproc/webp"
 
-  client, _ := buckt.Default(
-    buckt.WithImageProcessor(webp.New()),
-    buckt.WithImageDerivatives(
-      buckt.DerivativeSpec{Name: "thumbnail", MaxWidth: 200, Format: "webp"},
+  client, _ := bucket.Default(
+    bucket.WithImageProcessor(webp.New()),
+    bucket.WithImageDerivatives(
+      bucket.DerivativeSpec{Name: "thumbnail", MaxWidth: 200, Format: "webp"},
     ),
   )
 ```
@@ -541,7 +541,7 @@ Attach arbitrary string key/value pairs to any file (stored as JSON on the file 
 With `WithDedup()`, an upload whose bytes hash-match a file already present in the **same target folder** (for the same owner) returns that existing file's ID instead of writing the blob again — turning the "same photo sent four times" case into a single stored object.
 
 ```go
-  client, _ := buckt.Default(buckt.WithDedup())
+  client, _ := bucket.Default(bucket.WithDedup())
 ```
 
 Scoped to the target folder, so it composes with nested-namespace mode and never resurrects a trashed duplicate. Off by default.
@@ -553,7 +553,7 @@ Scoped to the target folder, so it composes with nested-namespace mode and never
 Register handlers to react to file operations. Handlers run **synchronously after** the operation commits — keep them fast (the intended pattern is to enqueue work and return). A panicking handler is recovered and never fails the originating call.
 
 ```go
-  import "github.com/Rhaqim/buckt/pkg/events"
+  import "github.com/dgrslabs/bucket/pkg/events"
 
   onEvent := func(ctx context.Context, e events.Event) {
     if e.Type == events.FileUploaded {
@@ -561,7 +561,7 @@ Register handlers to react to file operations. Handlers run **synchronously afte
     }
   }
 
-  client, _ := buckt.Default(buckt.WithEventHandler(onEvent))
+  client, _ := bucket.Default(bucket.WithEventHandler(onEvent))
 ```
 
 | Event Type | Fires when |
@@ -581,10 +581,10 @@ The `events.Event` carries `Type`, `UserID`, `FileID`, `ParentID`, `Name`, `Path
 
 Register a scanner to inspect every upload's bytes **before** they're committed to the backend. Returning an error rejects the file — nothing is stored, no `file.uploaded` event fires, and the caller gets `ErrUploadRejected` wrapping your error.
 
-buckt ships **no** scanning engine by design (keeping antivirus dependencies out of a storage library). You supply one — a ClamAV client, a VirusTotal lookup, a content-type allowlist, etc.
+bucket ships **no** scanning engine by design (keeping antivirus dependencies out of a storage library). You supply one — a ClamAV client, a VirusTotal lookup, a content-type allowlist, etc.
 
 ```go
-  import "github.com/Rhaqim/buckt/pkg/scan"
+  import "github.com/dgrslabs/bucket/pkg/scan"
 
   scanner := scan.ScannerFunc(func(ctx context.Context, name string, data []byte) error {
     if err := clamav.Scan(ctx, data); err != nil {
@@ -593,19 +593,19 @@ buckt ships **no** scanning engine by design (keeping antivirus dependencies out
     return nil
   })
 
-  client, _ := buckt.Default(buckt.WithUploadScanner(scanner))
+  client, _ := bucket.Default(bucket.WithUploadScanner(scanner))
 ```
 
 Handle a rejection with `errors.Is` (map it to HTTP 422, for example):
 
 ```go
   _, err := client.UploadFile(userID, "", "invoice.pdf", "application/pdf", data)
-  if errors.Is(err, buckt.ErrUploadRejected) {
+  if errors.Is(err, bucket.ErrUploadRejected) {
     // rejected by the scanner — err also wraps the scanner's own reason
   }
 ```
 
-The scanner runs at buckt's single upload chokepoint, so **every** upload path is covered — a caller can't forget to wire it in per call site.
+The scanner runs at bucket's single upload chokepoint, so **every** upload path is covered — a caller can't forget to wire it in per call site.
 
 ---
 
@@ -614,10 +614,10 @@ The scanner runs at buckt's single upload chokepoint, so **every** upload path i
 Record per-backend operation metrics (count, errors, bytes, latency) with a pluggable recorder. The built-in in-memory collector has no dependencies:
 
 ```go
-  import "github.com/Rhaqim/buckt/pkg/metrics"
+  import "github.com/dgrslabs/bucket/pkg/metrics"
 
   collector := metrics.NewCollector()
-  client, _ := buckt.Default(buckt.WithMetrics(collector))
+  client, _ := bucket.Default(bucket.WithMetrics(collector))
 
   // ... after some activity ...
   snap := collector.Snapshot() // map[backend]map[operation]metrics.Stat
@@ -634,7 +634,7 @@ Each `metrics.Stat` holds `Count`, `Errors`, `Bytes`, and `TotalDur` (divide by 
 
 ## Expiring / Temp Files
 
-Give a file a TTL and buckt will permanently delete it — blob, image derivatives, and metadata row — once it's due. Ideal for temp uploads, one-time shares, and scratch files.
+Give a file a TTL and bucket will permanently delete it — blob, image derivatives, and metadata row — once it's due. Ideal for temp uploads, one-time shares, and scratch files.
 
 ```go
   // Upload as a temp file — the TTL is written in the same insert ("save temp"),
@@ -657,11 +657,11 @@ Expiry isn't automatic on its own — a **sweep** does the deleting, and you cho
   purged, err := client.PurgeExpired(ctx) // permanently deletes everything past due; returns the count
 ```
 
-**Built-in background sweeper (convenient for single-instance):** let buckt run the ticker for you.
+**Built-in background sweeper (convenient for single-instance):** let bucket run the ticker for you.
 
 ```go
-  client, _ := buckt.Default(buckt.WithExpirySweeper(10 * time.Minute))
-  // buckt now calls PurgeExpired every 10 minutes; Client.Close() stops it.
+  client, _ := bucket.Default(bucket.WithExpirySweeper(10 * time.Minute))
+  // bucket now calls PurgeExpired every 10 minutes; Client.Close() stops it.
 ```
 
 Each expiry deletion emits a `file.purged` [event](#lifecycle-events), so you can hook post-deletion behaviour (audit log, notify, etc.). `PurgeExpired` works in batches and is safe to call repeatedly.
@@ -674,7 +674,7 @@ The bundled web client exposes expiry too: the upload endpoints accept an option
 
 ## Trash & Deletion
 
-Buckt has two delete modes:
+Bucket has two delete modes:
 
 | Action | Result | API |
 |---|---|---|
@@ -709,15 +709,15 @@ The optional web client gives you a Gin-based HTTP API and a Tailwind UI for fre
 
 ```go
   import (
-    "github.com/Rhaqim/buckt"
-    web "github.com/Rhaqim/buckt/client/web"
+    "github.com/dgrslabs/bucket"
+    web "github.com/dgrslabs/bucket/client/web"
   )
 
   func main() {
-    bucktClient, _ := buckt.Default()
-    defer bucktClient.Close()
+    bucketClient, _ := bucket.Default()
+    defer bucketClient.Close()
 
-    router, _ := web.NewClient(bucktClient)
+    router, _ := web.NewClient(bucketClient)
     router.Run(":8080")
   }
 ```
@@ -748,7 +748,7 @@ The optional web client gives you a Gin-based HTTP API and a Tailwind UI for fre
 
 ## Database
 
-By default Buckt uses SQLite (`./db.sqlite`). For production, bring your own connection.
+By default Bucket uses SQLite (`./db.sqlite`). For production, bring your own connection.
 
 | Driver | Status |
 |---|---|
@@ -762,20 +762,20 @@ By default Buckt uses SQLite (`./db.sqlite`). For production, bring your own con
 
   db, _ := sql.Open("postgres", "postgres://user:pass@host/db?sslmode=disable")
 
-  client, _ := buckt.Default(buckt.WithDB(buckt.Postgres, db))
+  client, _ := bucket.Default(bucket.WithDB(bucket.Postgres, db))
 ```
 
-> Buckt does not close externally-provided connections — your application owns the lifecycle.
+> Bucket does not close externally-provided connections — your application owns the lifecycle.
 
 ### Schema
 
-Buckt manages two main tables via GORM AutoMigrate:
+Bucket manages two main tables via GORM AutoMigrate:
 
 | Table | Purpose |
 |---|---|
 | `folder_models` | Folder hierarchy with parent_id, paths, and ownership |
 | `file_models` | File metadata: name, size, content type, hash, owner |
-| `buckt_migration_models` | (Migration mode only) Tracks per-file migration state |
+| `bucket_migration_models` | (Migration mode only) Tracks per-file migration state |
 
 ---
 
@@ -789,9 +789,9 @@ Two cache layers:
 | **Cache Manager** | Pluggable interface | Caches metadata (folders, file records) |
 
 ```go
-  client, _ := buckt.Default(buckt.WithCache(buckt.CacheConfig{
+  client, _ := bucket.Default(bucket.WithCache(bucket.CacheConfig{
     Manager: myRedisCache, // implements domain.CacheManager
-    FileCacheConfig: buckt.FileCacheConfig{
+    FileCacheConfig: bucket.FileCacheConfig{
       NumCounters: 10_000_000,    // 10M counters
       MaxCost:     1 << 30,       // 1GB
       BufferItems: 64,
@@ -803,9 +803,9 @@ Implement the `CacheManager` interface to plug in Redis, Memcached, or any other
 
 ```go
   type CacheManager interface {
-    SetBucktValue(ctx context.Context, key string, value any) error
-    GetBucktValue(ctx context.Context, key string) (any, error)
-    DeleteBucktValue(ctx context.Context, key string) error
+    SetBucketValue(ctx context.Context, key string, value any) error
+    GetBucketValue(ctx context.Context, key string) (any, error)
+    DeleteBucketValue(ctx context.Context, key string) error
   }
 ```
 
@@ -813,7 +813,7 @@ Implement the `CacheManager` interface to plug in Redis, Memcached, or any other
 
 ## Security
 
-Buckt ships with security defaults that catch common file-handling mistakes:
+Bucket ships with security defaults that catch common file-handling mistakes:
 
 | Protection | Details |
 |---|---|
@@ -886,19 +886,19 @@ Every method has a `*Context` variant that takes an explicit `context.Context` f
 
 ### Errors
 
-Branch on failures with `errors.Is` using the re-exported sentinels (also available from `pkg/buckterr`):
+Branch on failures with `errors.Is` using the re-exported sentinels (also available from `pkg/bucketerr`):
 
 | Sentinel | Meaning | Suggested HTTP status |
 |---|---|---|
-| `buckt.ErrNotFound` | File/folder (or derivative) doesn't exist | 404 |
-| `buckt.ErrInvalidID` | ID is not a valid UUID | 400 |
-| `buckt.ErrInvalidName` | Empty/unsafe file or folder name | 400 |
-| `buckt.ErrAlreadyExists` | Name collision on create/move/rename | 409 |
-| `buckt.ErrFileTooLarge` | Upload exceeds `WithMaxFileSize` | 413 |
-| `buckt.ErrUploadRejected` | Rejected by an upload scanner | 422 |
-| `buckt.ErrTrashBatchExceeded` | Folder delete exceeds the trash batch cap | 409 |
-| `buckt.ErrBackendUnavailable` | Backend unreachable / feature not enabled | 503 |
-| `buckt.ErrUnsupported` | Operation not supported by the active backend (e.g. presign on local) | 501 |
+| `bucket.ErrNotFound` | File/folder (or derivative) doesn't exist | 404 |
+| `bucket.ErrInvalidID` | ID is not a valid UUID | 400 |
+| `bucket.ErrInvalidName` | Empty/unsafe file or folder name | 400 |
+| `bucket.ErrAlreadyExists` | Name collision on create/move/rename | 409 |
+| `bucket.ErrFileTooLarge` | Upload exceeds `WithMaxFileSize` | 413 |
+| `bucket.ErrUploadRejected` | Rejected by an upload scanner | 422 |
+| `bucket.ErrTrashBatchExceeded` | Folder delete exceeds the trash batch cap | 409 |
+| `bucket.ErrBackendUnavailable` | Backend unreachable / feature not enabled | 503 |
+| `bucket.ErrUnsupported` | Operation not supported by the active backend (e.g. presign on local) | 501 |
 
 ---
 

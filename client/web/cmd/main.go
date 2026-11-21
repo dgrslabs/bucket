@@ -5,27 +5,27 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/Rhaqim/buckt"
+	"github.com/dgrslabs/bucket"
 )
 
 func main() {
-	fileCacheConfig := buckt.FileCacheConfig{
+	fileCacheConfig := bucket.FileCacheConfig{
 		NumCounters: 1e7,     // 10M
 		MaxCost:     1 << 30, // 1GB
 		BufferItems: 64,
 	}
 
-	cacheConfig := buckt.CacheConfig{
+	cacheConfig := bucket.CacheConfig{
 		Manager:         NewCache(),
 		FileCacheConfig: fileCacheConfig,
 	}
 
-	bucktInstance, err := buckt.Default(buckt.WithCache(cacheConfig))
+	bucketInstance, err := bucket.Default(bucket.WithCache(cacheConfig))
 	if err != nil {
 		panic(err)
 	}
 
-	defer func() { _ = bucktInstance.Close() }()
+	defer func() { _ = bucketInstance.Close() }()
 }
 
 type Cache struct {
@@ -40,7 +40,7 @@ func NewCache() *Cache {
 	}
 }
 
-func (c *Cache) GetBucktValue(ctx context.Context, key string) (any, error) {
+func (c *Cache) GetBucketValue(ctx context.Context, key string) (any, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -56,7 +56,7 @@ func (c *Cache) GetBucktValue(ctx context.Context, key string) (any, error) {
 	return nil, nil
 }
 
-func (c *Cache) SetBucktValue(ctx context.Context, key string, value any) error {
+func (c *Cache) SetBucketValue(ctx context.Context, key string, value any) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -66,7 +66,7 @@ func (c *Cache) SetBucktValue(ctx context.Context, key string, value any) error 
 	return nil
 }
 
-func (c *Cache) DeleteBucktValue(ctx context.Context, key string) error {
+func (c *Cache) DeleteBucketValue(ctx context.Context, key string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

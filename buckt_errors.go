@@ -1,25 +1,25 @@
-package buckt
+package bucket
 
-import "github.com/Rhaqim/buckt/pkg/buckterr"
+import "github.com/dgrslabs/bucket/pkg/bucketerr"
 
 // Sentinel errors returned by Client methods. They are re-exported from
-// pkg/buckterr so callers can branch on failures with errors.Is without an extra
+// pkg/bucketerr so callers can branch on failures with errors.Is without an extra
 // import:
 //
-//	if errors.Is(err, buckt.ErrNotFound) { ... }
+//	if errors.Is(err, bucket.ErrNotFound) { ... }
 //
-// Because these are the same values as buckterr.ErrNotFound etc., either package
-// works with errors.Is. See pkg/buckterr for the full documentation and
+// Because these are the same values as bucketerr.ErrNotFound etc., either package
+// works with errors.Is. See pkg/bucketerr for the full documentation and
 // suggested HTTP status mappings.
 var (
-	ErrNotFound           = buckterr.ErrNotFound
-	ErrInvalidID          = buckterr.ErrInvalidID
-	ErrInvalidName        = buckterr.ErrInvalidName
-	ErrAlreadyExists      = buckterr.ErrAlreadyExists
-	ErrFileTooLarge       = buckterr.ErrFileTooLarge
-	ErrPathTraversal      = buckterr.ErrPathTraversal
-	ErrTrashBatchExceeded = buckterr.ErrTrashBatchExceeded
-	ErrBackendUnavailable = buckterr.ErrBackendUnavailable
-	ErrUploadRejected     = buckterr.ErrUploadRejected
-	ErrUnsupported        = buckterr.ErrUnsupported
+	ErrNotFound           = bucketerr.ErrNotFound
+	ErrInvalidID          = bucketerr.ErrInvalidID
+	ErrInvalidName        = bucketerr.ErrInvalidName
+	ErrAlreadyExists      = bucketerr.ErrAlreadyExists
+	ErrFileTooLarge       = bucketerr.ErrFileTooLarge
+	ErrPathTraversal      = bucketerr.ErrPathTraversal
+	ErrTrashBatchExceeded = bucketerr.ErrTrashBatchExceeded
+	ErrBackendUnavailable = bucketerr.ErrBackendUnavailable
+	ErrUploadRejected     = bucketerr.ErrUploadRejected
+	ErrUnsupported        = bucketerr.ErrUnsupported
 )

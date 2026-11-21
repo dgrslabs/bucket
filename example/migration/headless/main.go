@@ -22,8 +22,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/Rhaqim/buckt"
-	"github.com/Rhaqim/buckt/cloud/aws"
+	"github.com/dgrslabs/bucket"
+	"github.com/dgrslabs/bucket/cloud/aws"
 )
 
 func main() {
@@ -35,10 +35,10 @@ func main() {
 	// Migration mode: local is the source of truth, the object store is the
 	// destination. Reuses ./db.sqlite + ./media, so any files an earlier local
 	// run stored are picked up.
-	client, err := buckt.Default(
-		buckt.WithLog(buckt.LogConfig{}),
-		buckt.WithMigration(buckt.MigrationConfig{
-			From: buckt.LocalBackend(),
+	client, err := bucket.Default(
+		bucket.WithLog(bucket.LogConfig{}),
+		bucket.WithMigration(bucket.MigrationConfig{
+			From: bucket.LocalBackend(),
 			To:   target,
 		}),
 	)
@@ -50,7 +50,7 @@ func main() {
 	ctx := context.Background()
 
 	// A new upload in migration mode is dual-written to local AND the target.
-	if _, err := client.UploadFile("demo", "", "hello.txt", "text/plain", []byte("hi from buckt")); err != nil {
+	if _, err := client.UploadFile("demo", "", "hello.txt", "text/plain", []byte("hi from bucket")); err != nil {
 		log.Fatalf("upload: %v", err)
 	}
 	fmt.Println("uploaded hello.txt (mirrored to both local and the object store)")
@@ -67,10 +67,10 @@ func main() {
 		}
 		time.Sleep(time.Second)
 	}
-	fmt.Println("✅ migration complete — switch to buckt.WithBackend(target) to run on the object store only")
+	fmt.Println("✅ migration complete — switch to bucket.WithBackend(target) to run on the object store only")
 }
 
-func newObjectStore() (buckt.Backend, error) {
+func newObjectStore() (bucket.Backend, error) {
 	cfg := aws.Config{
 		AccessKey: os.Getenv("R2_ACCESS_KEY"),
 		SecretKey: os.Getenv("R2_SECRET_KEY"),

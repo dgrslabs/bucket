@@ -33,26 +33,26 @@ type S3Backend struct {
 	// issues — so callers can count exact Cloudflare R2 Class A/B operations.
 	// nil means metrics are disabled.
 	//
-	// The signature uses only standard-library types on purpose: it lets buckt
-	// inject a recorder here WITHOUT this module ever importing buckt, keeping
-	// the dependency one-way (buckt depends on backends, never the reverse).
+	// The signature uses only standard-library types on purpose: it lets bucket
+	// inject a recorder here WITHOUT this module ever importing bucket, keeping
+	// the dependency one-way (bucket depends on backends, never the reverse).
 	rec func(op string, bytes int64, dur time.Duration, err error)
 }
 
 // Compile-time guard that S3Backend keeps the exact PresignGetURLWithHeaders
-// signature buckt detects structurally (see buckt's PresignedURL).
+// signature bucket detects structurally (see bucket's PresignedURL).
 var _ interface {
 	PresignGetURLWithHeaders(ctx context.Context, key string, ttl time.Duration, contentType, contentDisposition, cacheControl string) (string, error)
 } = (*S3Backend)(nil)
 
 // Compile-time guard that S3Backend keeps the exact SetOpRecorder signature
-// buckt detects structurally. If this stops compiling, the per-API-call metrics
-// hook drifted and buckt would silently stop injecting the recorder.
+// bucket detects structurally. If this stops compiling, the per-API-call metrics
+// hook drifted and bucket would silently stop injecting the recorder.
 var _ interface {
 	SetOpRecorder(func(op string, bytes int64, dur time.Duration, err error))
 } = (*S3Backend)(nil)
 
-// SetOpRecorder installs a per-API-call metrics callback. buckt calls this
+// SetOpRecorder installs a per-API-call metrics callback. bucket calls this
 // (detected structurally) when its metrics are enabled; other callers may set it
 // directly. Reported operation names are "s3:PutObject", "s3:GetObject",
 // "s3:ListObjectsV2", etc. Safe to leave unset — metrics are then disabled.
@@ -116,7 +116,7 @@ func (s *S3Backend) Name() string {
 }
 
 // altKey returns the leading-slash-stripped form of a key and whether it differs
-// from the input. buckt's nested-namespace paths are stored with a leading slash
+// from the input. bucket's nested-namespace paths are stored with a leading slash
 // (e.g. "/user/root_folder/file"), but a local -> S3 migration copies objects
 // under the keys the local backend's List() reports, which are relative and so
 // have NO leading slash. Reads and deletes therefore try both forms so objects
@@ -170,7 +170,7 @@ func (s *S3Backend) Put(ctx context.Context, key string, data []byte) error {
 // contentTypeFor picks the stored Content-Type for an object: the key's file
 // extension first (http.DetectContentType misses common audio such as m4a/AAC
 // and ID3-less mp3, and reports SVG/JSON/CSS as text/plain), then byte
-// sniffing for extensionless keys (buckt's flat namespace keeps the extension,
+// sniffing for extensionless keys (bucket's flat namespace keeps the extension,
 // but derivatives and nested names may not have one).
 func contentTypeFor(key string, data []byte) string {
 	if ext := strings.ToLower(path.Ext(key)); ext != "" {
@@ -355,8 +355,8 @@ func (s *S3Backend) PresignGetURL(ctx context.Context, path string, ttl time.Dur
 // before Put set a Content-Type. An empty value leaves that header as stored.
 // S3 and Cloudflare R2 both honour these overrides on presigned GETs.
 //
-// The parameters are plain strings on purpose so buckt can detect this method
-// structurally without this module importing buckt.
+// The parameters are plain strings on purpose so bucket can detect this method
+// structurally without this module importing bucket.
 func (s *S3Backend) PresignGetURLWithHeaders(ctx context.Context, path string, ttl time.Duration, contentType, contentDisposition, cacheControl string) (string, error) {
 	key := path
 	if alt, ok := altKey(path); ok {
@@ -392,7 +392,7 @@ func (s *S3Backend) PresignGetURLWithHeaders(ctx context.Context, path string, t
 
 // PresignPutURL returns a URL a client can HTTP PUT an object to, uploading
 // directly to S3/R2 without the bytes passing through the application. Signed
-// locally (no network). The key is used verbatim — the caller (buckt's upload
+// locally (no network). The key is used verbatim — the caller (bucket's upload
 // reservation) supplies the exact object key.
 func (s *S3Backend) PresignPutURL(ctx context.Context, key string, ttl time.Duration) (string, error) {
 	req, err := s3.NewPresignClient(s.client).PresignPutObject(ctx, &s3.PutObjectInput{

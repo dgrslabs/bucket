@@ -8,13 +8,13 @@ import (
 
 type CacheManager interface {
 	// Set sets the value for the given key.
-	SetBucktValue(ctx context.Context, key string, value any) error
+	SetBucketValue(ctx context.Context, key string, value any) error
 
 	// Get retrieves the value for the given key.
-	GetBucktValue(ctx context.Context, key string) (any, error)
+	GetBucketValue(ctx context.Context, key string) (any, error)
 
 	// Delete deletes the value for the given key.
-	DeleteBucktValue(ctx context.Context, key string) error
+	DeleteBucketValue(ctx context.Context, key string) error
 }
 
 type LRUCache interface {
@@ -25,7 +25,7 @@ type LRUCache interface {
 	Close()
 }
 
-type BucktLogger interface {
+type BucketLogger interface {
 	Errorf(format string, args ...any)
 	Info(message string)
 	Infof(format string, args ...any)

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Rhaqim/buckt"
-	"github.com/Rhaqim/buckt/cloud/gcp"
+	"github.com/dgrslabs/bucket"
+	"github.com/dgrslabs/bucket/cloud/gcp"
 )
 
 func main() {
@@ -26,9 +26,9 @@ func main() {
 		return
 	}
 
-	backend := buckt.WithBackend(gcpBackend)
+	backend := bucket.WithBackend(gcpBackend)
 
-	client, err := buckt.Default(buckt.WithLog(buckt.LogConfig{}), backend)
+	client, err := bucket.Default(bucket.WithLog(bucket.LogConfig{}), backend)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -36,5 +36,5 @@ func main() {
 
 	defer client.Close()
 
-	fmt.Println("Buckt Client initialized successfully")
+	fmt.Println("Bucket Client initialized successfully")
 }

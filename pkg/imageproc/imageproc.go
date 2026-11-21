@@ -1,10 +1,10 @@
-// Package imageproc defines the pluggable image processor buckt uses to build
+// Package imageproc defines the pluggable image processor bucket uses to build
 // image derivatives (thumbnails, etc.), plus a built-in pure-Go default.
 //
 // The Processor interface is stdlib-only by design: an alternative processor
 // (e.g. one that also encodes WebP or AVIF) can implement it in its own module
-// WITHOUT importing buckt, keeping the dependency one-way — the same rule the
-// storage backends follow. Register one with buckt.WithImageProcessor.
+// WITHOUT importing bucket, keeping the dependency one-way — the same rule the
+// storage backends follow. Register one with bucket.WithImageProcessor.
 package imageproc
 
 import (
@@ -26,8 +26,8 @@ type Processor interface {
 	Resize(data []byte, maxWidth uint, format string) (out []byte, contentType string, err error)
 }
 
-// Default returns buckt's built-in processor: pure-Go JPEG and PNG resizing with
-// no cgo and no dependency beyond what buckt already ships. It does not encode
+// Default returns bucket's built-in processor: pure-Go JPEG and PNG resizing with
+// no cgo and no dependency beyond what bucket already ships. It does not encode
 // WebP — plug in a Processor that does (see the webp module) for that.
 func Default() Processor { return builtin{} }
 
@@ -62,6 +62,6 @@ func (builtin) Resize(data []byte, maxWidth uint, format string) ([]byte, string
 		}
 		return buf.Bytes(), "image/jpeg", nil
 	default:
-		return nil, "", fmt.Errorf("imageproc: built-in processor does not support format %q (it supports jpeg and png); register a custom Processor via buckt.WithImageProcessor", format)
+		return nil, "", fmt.Errorf("imageproc: built-in processor does not support format %q (it supports jpeg and png); register a custom Processor via bucket.WithImageProcessor", format)
 	}
 }

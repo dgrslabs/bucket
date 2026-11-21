@@ -1,10 +1,10 @@
-// Package events defines buckt's file lifecycle events and the handler
-// signature applications register (via buckt.WithEventHandler) to react to
+// Package events defines bucket's file lifecycle events and the handler
+// signature applications register (via bucket.WithEventHandler) to react to
 // them — for example, enqueue an uploaded image for AI processing or generate
 // derivatives.
 //
-// buckt itself performs no processing; it only emits. This keeps buckt
-// domain-agnostic and the dependency one-way: your worker imports buckt/events,
+// bucket itself performs no processing; it only emits. This keeps bucket
+// domain-agnostic and the dependency one-way: your worker imports bucket/events,
 // never the reverse. Handlers run synchronously right after the operation
 // succeeds (never inside the DB transaction), so keep them fast — the common
 // pattern is to enqueue and return. A handler that panics or blocks affects
@@ -32,7 +32,7 @@ const (
 
 // Event describes something that happened to a file. It carries only
 // storage-level facts — no domain concepts — so handlers stay decoupled from
-// both buckt's internals and your application model.
+// both bucket's internals and your application model.
 type Event struct {
 	Type        Type      `json:"type"`
 	UserID      string    `json:"user_id"`
@@ -46,7 +46,7 @@ type Event struct {
 	Time        time.Time `json:"time"`
 }
 
-// Handler reacts to a buckt Event. Register handlers with buckt.WithEventHandler
+// Handler reacts to a bucket Event. Register handlers with bucket.WithEventHandler
 // (it may be called more than once to attach several). The context is the one
 // from the originating operation.
 type Handler func(ctx context.Context, e Event)

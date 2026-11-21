@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Rhaqim/buckt/pkg/metrics"
+	"github.com/dgrslabs/bucket/pkg/metrics"
 )
 
 // fakeBackend is a minimal FileBackend that also implements the structural
-// SetOpRecorder hook (matching what buckt injects into), so we can verify both
+// SetOpRecorder hook (matching what bucket injects into), so we can verify both
 // the logical decorator and per-API-call injection without a real cloud client.
 type fakeBackend struct {
 	rec func(op string, bytes int64, dur time.Duration, err error)

@@ -8,21 +8,21 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Rhaqim/buckt/internal/domain"
+	"github.com/dgrslabs/bucket/internal/domain"
 )
 
-type BucktLogger struct {
+type BucketLogger struct {
 	Logger  *log.Logger
 	silence bool
 }
 
-type LogFunc func(domain.BucktLogger)
+type LogFunc func(domain.BucketLogger)
 
-func NewLogger(logFile string, logTerminal, silence bool, opts ...LogFunc) domain.BucktLogger {
-	bucktLogger := &BucktLogger{silence: silence}
+func NewLogger(logFile string, logTerminal, silence bool, opts ...LogFunc) domain.BucketLogger {
+	bucketLogger := &BucketLogger{silence: silence}
 
 	for _, opt := range opts {
-		opt(bucktLogger)
+		opt(bucketLogger)
 	}
 
 	if !logTerminal && logFile == "" {
@@ -57,34 +57,34 @@ func NewLogger(logFile string, logTerminal, silence bool, opts ...LogFunc) domai
 		}
 	}
 
-	if bucktLogger.Logger == nil {
-		bucktLogger.Logger = log.New(logWriter, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	if bucketLogger.Logger == nil {
+		bucketLogger.Logger = log.New(logWriter, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	}
 
-	return bucktLogger
+	return bucketLogger
 }
 
 func WithLogger(logger *log.Logger) LogFunc {
-	return func(l domain.BucktLogger) {
+	return func(l domain.BucketLogger) {
 		l.AddLogger(logger)
 	}
 }
 
-func (l *BucktLogger) AddLogger(logger *log.Logger) {
+func (l *BucketLogger) AddLogger(logger *log.Logger) {
 	l.Logger = logger
 }
 
-func (l *BucktLogger) GetLogger() *log.Logger {
+func (l *BucketLogger) GetLogger() *log.Logger {
 	return l.Logger
 }
 
 // Writer returns the writer for the info logger
-func (l *BucktLogger) Writer() io.Writer {
+func (l *BucketLogger) Writer() io.Writer {
 	return l.Logger.Writer()
 }
 
 // Info logs an info message
-func (l *BucktLogger) Info(message string) {
+func (l *BucketLogger) Info(message string) {
 	if l.silence {
 		return
 	}
@@ -92,7 +92,7 @@ func (l *BucktLogger) Info(message string) {
 }
 
 // infof logs an info message with formatting
-func (l *BucktLogger) Infof(format string, args ...any) {
+func (l *BucketLogger) Infof(format string, args ...any) {
 	if l.silence {
 		return
 	}
@@ -100,7 +100,7 @@ func (l *BucktLogger) Infof(format string, args ...any) {
 }
 
 // Warn logs a warning message
-func (l *BucktLogger) Warn(message string) {
+func (l *BucketLogger) Warn(message string) {
 	if l.silence {
 		return
 	}
@@ -108,7 +108,7 @@ func (l *BucktLogger) Warn(message string) {
 }
 
 // Error logs an error message
-func (l *BucktLogger) Errorf(format string, args ...any) {
+func (l *BucketLogger) Errorf(format string, args ...any) {
 	if l.silence {
 		return
 	}
@@ -116,11 +116,11 @@ func (l *BucktLogger) Errorf(format string, args ...any) {
 }
 
 // WrapError returns err wrapped with message as context using %w, so
-// errors.Is / errors.As continue to work through it. It does NOT log: buckt
+// errors.Is / errors.As continue to work through it. It does NOT log: bucket
 // returns errors to the caller rather than logging them (logging is the
 // application's decision). Use Info/Warn/Errorf for diagnostics you are
 // deliberately not returning. Returns nil when err is nil.
-func (l *BucktLogger) WrapError(message string, err error) error {
+func (l *BucketLogger) WrapError(message string, err error) error {
 	if err == nil {
 		return nil
 	}
@@ -128,7 +128,7 @@ func (l *BucktLogger) WrapError(message string, err error) error {
 }
 
 // WrapErrorf is like WrapError but formats message with args first.
-func (l *BucktLogger) WrapErrorf(message string, err error, args ...any) error {
+func (l *BucketLogger) WrapErrorf(message string, err error, args ...any) error {
 	if err == nil {
 		return nil
 	}

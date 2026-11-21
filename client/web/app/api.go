@@ -6,27 +6,27 @@ import (
 	"io"
 	"time"
 
-	"github.com/Rhaqim/buckt"
-	"github.com/Rhaqim/buckt/client/web/domain"
-	"github.com/Rhaqim/buckt/pkg/fileutil"
-	"github.com/Rhaqim/buckt/pkg/metrics"
-	"github.com/Rhaqim/buckt/pkg/response"
+	"github.com/dgrslabs/bucket"
+	"github.com/dgrslabs/bucket/client/web/domain"
+	"github.com/dgrslabs/bucket/pkg/fileutil"
+	"github.com/dgrslabs/bucket/pkg/metrics"
+	"github.com/dgrslabs/bucket/pkg/response"
 	"github.com/gin-gonic/gin"
 )
 
 type APIService struct {
-	client *buckt.Client
+	client *bucket.Client
 }
 
-func NewAPIService(client *buckt.Client) domain.APIService {
+func NewAPIService(client *bucket.Client) domain.APIService {
 	return &APIService{
 		client: client,
 	}
 }
 
-// Metrics reports what buckt gained in 1.6.0: backend operation counts (with
+// Metrics reports what bucket gained in 1.6.0: backend operation counts (with
 // Cloudflare R2 billing class), total storage bytes, and cache hit/miss stats.
-// Backend op counts are only present when the app configured buckt.WithMetrics.
+// Backend op counts are only present when the app configured bucket.WithMetrics.
 func (svc *APIService) Metrics(c *gin.Context) {
 	storage, err := svc.client.StorageBytes(c.Request.Context())
 	if err != nil {
@@ -41,7 +41,7 @@ func (svc *APIService) Metrics(c *gin.Context) {
 		Bytes   int64  `json:"bytes"`
 		R2Class string `json:"r2_class,omitempty"`
 	}
-	// metricsOn reflects whether the app configured buckt.WithMetrics — not
+	// metricsOn reflects whether the app configured bucket.WithMetrics — not
 	// whether any ops have been recorded yet. A freshly started app has metrics
 	// enabled but an empty backends map until the first backend call, and the UI
 	// must distinguish "off" from "on but idle".
@@ -370,7 +370,7 @@ func (svc *APIService) ServeFile(c *gin.Context) {
 	// Only render inline for a small allowlist of media types. Types that can
 	// execute script in this origin (text/html, image/svg+xml, ...) are forced
 	// to download, closing a stored-XSS vector where an uploaded HTML/SVG file
-	// would otherwise run in the buckt origin when opened via /serve.
+	// would otherwise run in the bucket origin when opened via /serve.
 	disposition := fileutil.DispositionFor(file.ContentType)
 
 	// Set headers
@@ -609,7 +609,7 @@ func (svc *APIService) PresignUpload(c *gin.Context) {
 
 	fileID, url, err := svc.client.PresignUploadContext(c.Request.Context(), userID, req.ParentID, req.FileName, req.ContentType, ttl)
 	if err != nil {
-		if errors.Is(err, buckt.ErrUnsupported) {
+		if errors.Is(err, bucket.ErrUnsupported) {
 			c.AbortWithStatusJSON(501, response.WrapError("this backend cannot presign uploads", err))
 			return
 		}
@@ -661,7 +661,7 @@ func (svc *APIService) Presign(c *gin.Context) {
 
 	url, err := svc.client.PresignedURLContext(c.Request.Context(), fileID, ttl)
 	if err != nil {
-		if errors.Is(err, buckt.ErrUnsupported) {
+		if errors.Is(err, bucket.ErrUnsupported) {
 			c.AbortWithStatusJSON(501, response.WrapError("this backend cannot presign URLs", err))
 			return
 		}

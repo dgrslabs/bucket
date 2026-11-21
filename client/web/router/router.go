@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/Rhaqim/buckt/client/web/domain"
-	"github.com/Rhaqim/buckt/client/web/model"
+	"github.com/dgrslabs/bucket/client/web/domain"
+	"github.com/dgrslabs/bucket/client/web/model"
 	"github.com/gin-gonic/gin"
 )
 
@@ -84,7 +84,7 @@ func (r *Router) registerBaseRoutes(mode model.WebMode) {
 
 	// /serve and /stream expose raw file *contents* by id. Browsers load these
 	// directly (<img src>, <video>, download links) and cannot attach the
-	// buckt-User-ID header, so guarding them with header auth breaks the bundled
+	// bucket-User-ID header, so guarding them with header auth breaks the bundled
 	// UI — the symptom is a 401 when viewing an uploaded file. Scope the guard to
 	// the mode instead:
 	//   - UI / All: the bundled UI is single-tenant, so serve content as the
@@ -92,7 +92,7 @@ func (r *Router) registerBaseRoutes(mode model.WebMode) {
 	//   - API: standalone API callers can send the header, so require it.
 	//   - Mount: the guard sets owner_id="default" and passes through; the
 	//     mounting app applies its own auth upstream.
-	// For per-object authorization in production, front buckt with signed URLs —
+	// For per-object authorization in production, front bucket with signed URLs —
 	// the bundled handlers still call the un-scoped core GetFile.
 	serve := r.Group("/")
 	switch mode {
@@ -109,7 +109,7 @@ func (r *Router) registerBaseRoutes(mode model.WebMode) {
 
 	// Metrics dashboard endpoint (JSON): storage bytes, cache hit/miss, and
 	// backend operation counts with R2 billing class. Surfaces the metrics added
-	// in buckt 1.6.0.
+	// in bucket 1.6.0.
 	r.GET("/metrics", r.APIService.Metrics)
 
 	// Which storage backend is active + migration progress (for the UI badge).

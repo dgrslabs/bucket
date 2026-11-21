@@ -41,12 +41,12 @@ type FileBackend interface {
 // PresignBackend is an OPTIONAL capability: a backend that can mint a
 // time-limited URL granting direct access to an object, so reads don't have to
 // stream through the application process. Cloud backends (S3/R2, and later
-// Azure/GCS) implement it; the local filesystem backend does not. buckt detects
+// Azure/GCS) implement it; the local filesystem backend does not. bucket detects
 // it by type assertion (like MigratableBackend) and surfaces ErrUnsupported when
 // the active backend can't presign.
 type PresignBackend interface {
 	// PresignGetURL returns a URL that downloads the object at key directly from
-	// the backend, valid for ttl. The URL bypasses buckt's auth for its lifetime,
+	// the backend, valid for ttl. The URL bypasses bucket's auth for its lifetime,
 	// so keep ttl short.
 	PresignGetURL(ctx context.Context, key string, ttl time.Duration) (string, error)
 
@@ -59,9 +59,9 @@ type PresignBackend interface {
 
 // PresignHeadersBackend is an OPTIONAL refinement of PresignBackend: the backend
 // can sign response-header overrides into a GET URL, so the store serves the
-// Content-Type buckt recorded at upload, a safe Content-Disposition, and a
+// Content-Type bucket recorded at upload, a safe Content-Disposition, and a
 // Cache-Control policy, regardless of the object's stored metadata. An empty
-// value leaves that header as stored. The S3/R2 backend implements it; buckt
+// value leaves that header as stored. The S3/R2 backend implements it; bucket
 // falls back to PresignGetURL when a backend doesn't.
 type PresignHeadersBackend interface {
 	PresignGetURLWithHeaders(ctx context.Context, key string, ttl time.Duration, contentType, contentDisposition, cacheControl string) (string, error)
@@ -145,7 +145,7 @@ func (p *PlaceholderBackend) Stream(ctx context.Context, path string) (io.ReadCl
 	return nil, fmt.Errorf("placeholder backend (%s) cannot be used directly", p.Title)
 }
 
-// BucktFileSystemService defines the interface for file system operations within the Buckt domain.
+// BucketFileSystemService defines the interface for file system operations within the Bucket domain.
 // It provides methods to validate paths, write, retrieve, update, and delete files.
 type FileSystemService interface {
 	// FSValidatePath validates the given file path and returns the validated path or an error.

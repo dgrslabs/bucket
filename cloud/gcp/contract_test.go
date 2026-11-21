@@ -100,7 +100,7 @@ func TestGCPBackend_Contract_FakeGCS(t *testing.T) {
 	}
 	bucket := os.Getenv("BUCKT_FAKEGCS_BUCKET")
 	if bucket == "" {
-		bucket = "buckt-test"
+		bucket = "bucket-test"
 	}
 
 	be, err := NewBackend(Config{Bucket: bucket, Endpoint: endpoint})

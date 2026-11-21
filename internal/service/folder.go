@@ -9,16 +9,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Rhaqim/buckt/internal/constant"
-	"github.com/Rhaqim/buckt/internal/domain"
-	"github.com/Rhaqim/buckt/internal/model"
-	"github.com/Rhaqim/buckt/internal/utils"
-	"github.com/Rhaqim/buckt/pkg/buckterr"
+	"github.com/dgrslabs/bucket/internal/constant"
+	"github.com/dgrslabs/bucket/internal/domain"
+	"github.com/dgrslabs/bucket/internal/model"
+	"github.com/dgrslabs/bucket/internal/utils"
+	"github.com/dgrslabs/bucket/pkg/bucketerr"
 	"github.com/google/uuid"
 )
 
 type FolderService struct {
-	logger domain.BucktLogger
+	logger domain.BucketLogger
 
 	cache domain.CacheManager
 
@@ -31,7 +31,7 @@ type FolderService struct {
 }
 
 func NewFolderService(
-	bucktLogger domain.BucktLogger,
+	bucketLogger domain.BucketLogger,
 	cacheManager domain.CacheManager,
 	folderRepository domain.FolderRepository,
 	backend domain.FileBackend,
@@ -39,9 +39,9 @@ func NewFolderService(
 	maxTrashBatchSize int,
 	backendOpTimeout time.Duration,
 ) domain.FolderService {
-	bucktLogger.Info("🚀 Initialising folder services")
+	bucketLogger.Info("🚀 Initialising folder services")
 	return &FolderService{
-		logger:            bucktLogger,
+		logger:            bucketLogger,
 		cache:             cacheManager,
 		repo:              folderRepository,
 		backend:           backend,
@@ -54,7 +54,7 @@ func NewFolderService(
 // CreateFolder implements domain.FolderService.
 func (f *FolderService) CreateFolder(ctx context.Context, user_id, parent_id, folder_name, description string) (string, error) {
 	if err := utils.ValidateFolderName(folder_name, constant.TRASH_FOLDER_NAME); err != nil {
-		return "", fmt.Errorf("invalid folder name: %w", buckterr.ErrInvalidName)
+		return "", fmt.Errorf("invalid folder name: %w", bucketerr.ErrInvalidName)
 	}
 
 	var err error
@@ -66,7 +66,7 @@ func (f *FolderService) CreateFolder(ctx context.Context, user_id, parent_id, fo
 
 	parentID, err := uuid.Parse(parent_id)
 	if err != nil {
-		return "", fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return "", fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 	// Get the parent folder
 	parentFolder, err = f.repo.GetFolder(ctx, parentID)
@@ -104,7 +104,7 @@ func (f *FolderService) GetFolder(ctx context.Context, user_id, folder_id string
 
 	id, err := uuid.Parse(folder_id)
 	if err != nil {
-		return nil, fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return nil, fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	// Cache key format
@@ -112,7 +112,7 @@ func (f *FolderService) GetFolder(ctx context.Context, user_id, folder_id string
 
 	// Try retrieving from cache
 	if f.cache != nil {
-		cached, err := f.cache.GetBucktValue(ctx, cacheKey)
+		cached, err := f.cache.GetBucketValue(ctx, cacheKey)
 		// Check if cached data is present and valid
 		if err == nil && cached != nil {
 			cachedStr, ok := cached.(string)
@@ -128,7 +128,7 @@ func (f *FolderService) GetFolder(ctx context.Context, user_id, folder_id string
 	// If not found in cache, fetch from database
 	folderPtr, err := f.repo.GetFolder(ctx, id)
 	if err != nil {
-		if errors.Is(err, buckterr.ErrNotFound) {
+		if errors.Is(err, bucketerr.ErrNotFound) {
 			folderPtr, err = f.repo.GetRootFolder(ctx, user_id)
 			if err != nil {
 				return nil, err
@@ -141,7 +141,7 @@ func (f *FolderService) GetFolder(ctx context.Context, user_id, folder_id string
 	// Store in cache before returning
 	if f.cache != nil {
 		if jsonBytes, jsonErr := json.Marshal(folderPtr); jsonErr == nil {
-			_ = f.cache.SetBucktValue(ctx, cacheKey, string(jsonBytes)) // Ignore cache error
+			_ = f.cache.SetBucketValue(ctx, cacheKey, string(jsonBytes)) // Ignore cache error
 		}
 	}
 
@@ -176,7 +176,7 @@ func (f *FolderService) GetTrashFolder(ctx context.Context, user_id string) (*mo
 func (f *FolderService) GetFolders(ctx context.Context, parent_id string) ([]model.FolderModel, error) {
 	parentID, err := uuid.Parse(parent_id)
 	if err != nil {
-		return nil, fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return nil, fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	folders, err := f.repo.GetFolders(ctx, parentID)
@@ -192,12 +192,12 @@ func (f *FolderService) GetFolders(ctx context.Context, parent_id string) ([]mod
 func (f *FolderService) MoveFolder(ctx context.Context, folder_id string, new_parent_id string) error {
 	folderID, err := uuid.Parse(folder_id)
 	if err != nil {
-		return fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	newParentID, err := uuid.Parse(new_parent_id)
 	if err != nil {
-		return fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	if err := f.repo.MoveFolder(ctx, folderID, newParentID); err != nil {
@@ -211,11 +211,11 @@ func (f *FolderService) MoveFolder(ctx context.Context, folder_id string, new_pa
 // Subtle: this method shadows the method (FolderRepository).RenameFolder of FolderService.repo.
 func (f *FolderService) RenameFolder(ctx context.Context, user_id string, folder_id string, new_name string) error {
 	if err := utils.ValidateFolderName(new_name, constant.TRASH_FOLDER_NAME); err != nil {
-		return fmt.Errorf("invalid folder name: %w", buckterr.ErrInvalidName)
+		return fmt.Errorf("invalid folder name: %w", bucketerr.ErrInvalidName)
 	}
 	folderID, err := uuid.Parse(folder_id)
 	if err != nil {
-		return fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	if err := f.repo.RenameFolder(ctx, user_id, folderID, new_name); err != nil {
@@ -233,7 +233,7 @@ func (f *FolderService) RenameFolder(ctx context.Context, user_id string, folder
 func (f *FolderService) DeleteFolder(ctx context.Context, folder_id string) (string, error) {
 	folderID, err := uuid.Parse(folder_id)
 	if err != nil {
-		return "", fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return "", fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	parent_id, _, _, _, err := f.repo.DeleteFolder(ctx, folderID, func(oldPath, newPath string, fileMoves []model.PathMove) error {
@@ -241,7 +241,7 @@ func (f *FolderService) DeleteFolder(ctx context.Context, folder_id string) (str
 		// runaway operations on large folder trees that would tie up the DB
 		// transaction and storage backend with thousands of sequential moves.
 		if f.maxTrashBatchSize > 0 && len(fileMoves) > f.maxTrashBatchSize {
-			return fmt.Errorf("folder contains %d files which exceeds the max trash batch size of %d; delete subtrees first: %w", len(fileMoves), f.maxTrashBatchSize, buckterr.ErrTrashBatchExceeded)
+			return fmt.Errorf("folder contains %d files which exceeds the max trash batch size of %d; delete subtrees first: %w", len(fileMoves), f.maxTrashBatchSize, bucketerr.ErrTrashBatchExceeded)
 		}
 
 		// In flat-namespace mode the paths don't reflect disk layout, so no
@@ -278,7 +278,7 @@ func (f *FolderService) DeleteFolder(ctx context.Context, folder_id string) (str
 func (f *FolderService) RestoreFolder(ctx context.Context, user_id, folder_id string) error {
 	folderID, err := uuid.Parse(folder_id)
 	if err != nil {
-		return fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	folder, err := f.repo.GetFolder(ctx, folderID)
@@ -293,7 +293,7 @@ func (f *FolderService) RestoreFolder(ctx context.Context, user_id, folder_id st
 
 	_, _, _, err = f.repo.RestoreFolder(ctx, folderID, target, func(oldPath, newPath string, fileMoves []model.PathMove) error {
 		if f.maxTrashBatchSize > 0 && len(fileMoves) > f.maxTrashBatchSize {
-			return fmt.Errorf("folder contains %d files which exceeds the max trash batch size of %d; restore subtrees first: %w", len(fileMoves), f.maxTrashBatchSize, buckterr.ErrTrashBatchExceeded)
+			return fmt.Errorf("folder contains %d files which exceeds the max trash batch size of %d; restore subtrees first: %w", len(fileMoves), f.maxTrashBatchSize, bucketerr.ErrTrashBatchExceeded)
 		}
 		if f.flatNameSpaces {
 			return nil
@@ -341,7 +341,7 @@ func (f *FolderService) resolveRestoreTarget(ctx context.Context, user_id string
 func (f *FolderService) ScrubFolder(ctx context.Context, user_id, folder_id string) (string, error) {
 	folderID, err := uuid.Parse(folder_id)
 	if err != nil {
-		return "", fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return "", fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	// get folder

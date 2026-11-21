@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/Rhaqim/buckt/internal/model"
+	"github.com/dgrslabs/bucket/internal/model"
 	"github.com/google/uuid"
 )
 

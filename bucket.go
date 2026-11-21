@@ -1,12 +1,12 @@
-// Description: Buckt is a simple file storage service that allows users to upload, download, and manage files and folders.
+// Description: bucket is a simple file storage service that allows users to upload, download, and manage files and folders.
 // It provides a simple API for managing files and folders, as well as a web interface for interacting with the service.
-// Buckt supports multiple storage backends, including local storage and cloud storage providers.
+// bucket supports multiple storage backends, including local storage and cloud storage providers.
 // The service can be configured to use a specific storage backend, or it can be used as a standalone service with local storage.
-// Buckt is built using Go and provides a simple and easy-to-use API for managing files and folders.
+// bucket is built using Go and provides a simple and easy-to-use API for managing files and folders.
 // It is designed to be lightweight and easy to deploy, making it ideal for small projects and personal use.
 // The service is extensible and can be customized to support additional features and functionality.
 
-package buckt
+package bucket
 
 import (
 	"context"
@@ -16,20 +16,20 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Rhaqim/buckt/internal/backend"
-	"github.com/Rhaqim/buckt/internal/cache"
-	"github.com/Rhaqim/buckt/internal/database"
-	"github.com/Rhaqim/buckt/internal/domain"
-	"github.com/Rhaqim/buckt/internal/mocks"
-	"github.com/Rhaqim/buckt/internal/model"
-	"github.com/Rhaqim/buckt/internal/repository"
-	"github.com/Rhaqim/buckt/internal/service"
-	"github.com/Rhaqim/buckt/pkg/events"
-	"github.com/Rhaqim/buckt/pkg/fileutil"
-	"github.com/Rhaqim/buckt/pkg/imageproc"
-	"github.com/Rhaqim/buckt/pkg/logger"
-	"github.com/Rhaqim/buckt/pkg/metrics"
-	"github.com/Rhaqim/buckt/pkg/scan"
+	"github.com/dgrslabs/bucket/internal/backend"
+	"github.com/dgrslabs/bucket/internal/cache"
+	"github.com/dgrslabs/bucket/internal/database"
+	"github.com/dgrslabs/bucket/internal/domain"
+	"github.com/dgrslabs/bucket/internal/mocks"
+	"github.com/dgrslabs/bucket/internal/model"
+	"github.com/dgrslabs/bucket/internal/repository"
+	"github.com/dgrslabs/bucket/internal/service"
+	"github.com/dgrslabs/bucket/pkg/events"
+	"github.com/dgrslabs/bucket/pkg/fileutil"
+	"github.com/dgrslabs/bucket/pkg/imageproc"
+	"github.com/dgrslabs/bucket/pkg/logger"
+	"github.com/dgrslabs/bucket/pkg/metrics"
+	"github.com/dgrslabs/bucket/pkg/scan"
 )
 
 type Client struct {
@@ -41,7 +41,7 @@ type Client struct {
 	maxTrashBatchSize int
 	backendOpTimeout  time.Duration
 
-	logger   domain.BucktLogger
+	logger   domain.BucketLogger
 	lruCache domain.LRUCache
 	metrics  metrics.Recorder
 
@@ -64,16 +64,16 @@ type Client struct {
 	sweeperStop func()
 }
 
-// New initializes a new Buckt client with the provided configuration options.
-// It accepts a Config struct and a variadic number of ConfigFunc options as arguments and returns a pointer to the initialized Buckt client.
+// New initializes a new bucket client with the provided configuration options.
+// It accepts a Config struct and a variadic number of ConfigFunc options as arguments and returns a pointer to the initialized bucket client.
 //
 // Parameters:
-// - conf: A Config struct containing the configuration options for the Buckt client.
-// - opts: A variadic number of ConfigFunc options to customize the BucktConfig.
+// - conf: A Config struct containing the configuration options for the bucket client.
+// - opts: A variadic number of ConfigFunc options to customize the bucketConfig.
 //
 // Returns:
-// - A pointer to the initialized Buckt Client.
-// - An error if the Buckt client could not be created.
+// - A pointer to the initialized bucket Client.
+// - An error if the bucket client could not be created.
 func New(conf Config, opts ...ConfigFunc) (*Client, error) {
 	for _, opt := range opts {
 		if opt != nil {
@@ -82,24 +82,24 @@ func New(conf Config, opts ...ConfigFunc) (*Client, error) {
 	}
 
 	logConf := conf.Log
-	bucktLog := logger.NewLogger(logConf.LogFile, logConf.LogTerminal, logConf.Silence, logger.WithLogger(logConf.Logger))
-	bucktLog.Info("🚀 Starting Buckt")
+	bucketLog := logger.NewLogger(logConf.LogFile, logConf.LogTerminal, logConf.Silence, logger.WithLogger(logConf.Logger))
+	bucketLog.Info("🚀 Starting bucket")
 
 	// Initialize database
 	dbConf := conf.DB
-	db, err := database.NewDB(dbConf.Database, dbConf.Driver, bucktLog, logConf.Silence, dbConf.TablePrefix)
+	db, err := database.NewDB(dbConf.Database, dbConf.Driver, bucketLog, logConf.Silence, dbConf.TablePrefix)
 	if err != nil {
-		return nil, bucktLog.WrapErrorf("failed to initialize database", err)
+		return nil, bucketLog.WrapErrorf("failed to initialize database", err)
 	}
 
 	// Migrate the database — fail fast on schema errors so we don't run
 	// against an incompatible schema and corrupt data.
 	if err = db.Migrate(conf.Backend.MigrationEnabled); err != nil {
-		return nil, bucktLog.WrapErrorf("failed to migrate database", err)
+		return nil, bucketLog.WrapErrorf("failed to migrate database", err)
 	}
 
 	// Initialize cache
-	cacheManager, lruCache := initializeCache(conf.Cache, bucktLog)
+	cacheManager, lruCache := initializeCache(conf.Cache, bucketLog)
 
 	// Initialise Backend. In migration mode, back the resumable bulk copy with a
 	// DB-persisted state store (the MigrationModel table, created by db.Migrate
@@ -108,7 +108,7 @@ func New(conf Config, opts ...ConfigFunc) (*Client, error) {
 	if conf.Backend.MigrationEnabled {
 		migrationStore = repository.NewMigrationStateStore(db.DB)
 	}
-	backend := resolveBackend(conf.MediaDir, conf.Backend, bucktLog, lruCache, conf.Metrics, migrationStore)
+	backend := resolveBackend(conf.MediaDir, conf.Backend, bucketLog, lruCache, conf.Metrics, migrationStore)
 
 	// Max file size: 0 means no limit (backward compatible)
 	maxFileSize := conf.MaxFileSize
@@ -138,18 +138,18 @@ func New(conf Config, opts ...ConfigFunc) (*Client, error) {
 		maxTrashBatch,
 		backendTimeout,
 		db,
-		bucktLog,
+		bucketLog,
 		cacheManager,
 		backend,
-		newEmitter(conf.EventHandlers, bucktLog),
+		newEmitter(conf.EventHandlers, bucketLog),
 		conf.Dedup,
 		conf.Scanner,
 	)
 
-	// Initialize the Buckt instance
-	buckt := &Client{
+	// Initialize the bucket instance
+	bucket := &Client{
 		db:                db,
-		logger:            bucktLog,
+		logger:            bucketLog,
 		lruCache:          lruCache,
 		metrics:           conf.Metrics,
 		backend:           backend,
@@ -167,16 +167,16 @@ func New(conf Config, opts ...ConfigFunc) (*Client, error) {
 
 	// Optional background expiry sweeper (opt-in via WithExpirySweeper).
 	if conf.ExpirySweepInterval > 0 {
-		buckt.startExpirySweeper(conf.ExpirySweepInterval)
+		bucket.startExpirySweeper(conf.ExpirySweepInterval)
 	}
 
-	bucktLog.Info("✅ Buckt initialized")
+	bucketLog.Info("✅ bucket initialized")
 
-	return buckt, nil
+	return bucket, nil
 }
 
-// Default initializes a new Buckt Client with default configuration options.
-// It accepts a variadic number of ConfigFunc options to customize the BucktConfig.
+// Default initializes a new bucket Client with default configuration options.
+// It accepts a variadic number of ConfigFunc options to customize the bucketConfig.
 //
 // The default configuration includes:
 // - LogConfig with LogTerminal set to true, LogFile set to "logs", and Debug set to true.
@@ -184,13 +184,13 @@ func New(conf Config, opts ...ConfigFunc) (*Client, error) {
 // - FlatNameSpaces set to true.
 //
 // Parameters:
-// - opts: A variadic number of ConfigFunc options to customize the BucktConfig.
+// - opts: A variadic number of ConfigFunc options to customize the bucketConfig.
 //
 // Returns:
-// - A pointer to the initialized Buckt Client.
-// - An error if the Buckt Client could not be created.
+// - A pointer to the initialized bucket Client.
+// - An error if the bucket Client could not be created.
 func Default(opts ...ConfigFunc) (*Client, error) {
-	bucktOpts := Config{
+	bucketOpts := Config{
 		Log:            LogConfig{LogTerminal: true, Silence: true},
 		MediaDir:       "media",
 		FlatNameSpaces: true,
@@ -198,14 +198,14 @@ func Default(opts ...ConfigFunc) (*Client, error) {
 
 	for _, opt := range opts {
 		if opt != nil {
-			opt(&bucktOpts)
+			opt(&bucketOpts)
 		}
 	}
 
-	return New(bucktOpts)
+	return New(bucketOpts)
 }
 
-// Close releases the Buckt instance's resources: it closes the LRU cache and
+// Close releases the bucket instance's resources: it closes the LRU cache and
 // the database connection, and returns any error from closing the database
 // (external connections passed via WithDB are left open). Adding this return
 // value is source-compatible — existing `defer client.Close()` and
@@ -909,7 +909,7 @@ func (b *Client) RestoreFileContext(ctx context.Context, user_id, file_id string
 }
 
 // SetFileMetadata replaces the arbitrary key/value metadata stored on a file.
-// buckt does not interpret it — use it for resource links (e.g. order IDs),
+// bucket does not interpret it — use it for resource links (e.g. order IDs),
 // AI-extracted tags, OCR text, etc. Passing nil or an empty map clears it.
 //
 // Parameters:
@@ -949,7 +949,7 @@ func isImage(contentType string) bool {
 
 // derivativeDir is the backend key prefix holding a file's derivatives. Keying
 // by file id (not path) means moving or trashing the file never orphans them.
-func derivativeDir(file_id string) string { return ".buckt_derivatives/" + file_id }
+func derivativeDir(file_id string) string { return ".bucket_derivatives/" + file_id }
 
 func derivativeKey(file_id, name string) string { return derivativeDir(file_id) + "/" + name }
 
@@ -1171,7 +1171,7 @@ func (b *Client) startExpirySweeper(interval time.Duration) {
 //
 // Only cloud backends can presign. With the local filesystem backend, or while
 // a migration is in progress, this returns ErrUnsupported. The URL grants access
-// for its whole lifetime regardless of buckt's own auth, so keep ttl short.
+// for its whole lifetime regardless of bucket's own auth, so keep ttl short.
 func (b *Client) PresignedURL(file_id string, ttl time.Duration) (string, error) {
 	return b.PresignedURLContext(context.Background(), file_id, ttl)
 }
@@ -1242,7 +1242,7 @@ func (b *Client) PresignedDerivativeURLContext(ctx context.Context, file_id, nam
 // but the file stays hidden from listings until you call FinalizeUpload once the
 // client's upload finishes.
 //
-// Because buckt never sees the bytes on this path, the upload is NOT
+// Because bucket never sees the bytes on this path, the upload is NOT
 // deduplicated or scanned, and no content hash is computed; image derivatives
 // are generated lazily at FinalizeUpload (via the file.uploaded event). Needs a
 // cloud backend — returns ErrUnsupported on local or during a migration.
@@ -1283,7 +1283,7 @@ func (b *Client) FinalizeUploadContext(ctx context.Context, file_id string, size
 
 /* Helper Methods */
 
-func initializeCache(conf CacheConfig, bucktLog domain.BucktLogger) (domain.CacheManager, domain.LRUCache) {
+func initializeCache(conf CacheConfig, bucketLog domain.BucketLogger) (domain.CacheManager, domain.LRUCache) {
 	fileConf := conf.FileCacheConfig
 	fileConf.Validate()
 
@@ -1292,13 +1292,13 @@ func initializeCache(conf CacheConfig, bucktLog domain.BucktLogger) (domain.Cach
 		// Best-effort fallback: the cache is optional, so we don't fail startup.
 		// Log it (the one legitimate use of the logger — an error we deliberately
 		// do not return to the caller).
-		bucktLog.Warn("failed to initialize file cache, using no-op cache: " + err.Error())
+		bucketLog.Warn("failed to initialize file cache, using no-op cache: " + err.Error())
 		lruCache = mocks.NewNoopLRUCache()
 	}
-	bucktLog.Info("✅ Initialized file cache")
+	bucketLog.Info("✅ Initialized file cache")
 
 	if conf.Manager != nil {
-		bucktLog.Info("✅ Using provided cache")
+		bucketLog.Info("✅ Using provided cache")
 		return conf.Manager, lruCache
 	}
 	return mocks.NewNoopCache(), lruCache
@@ -1308,7 +1308,7 @@ func initializeCache(conf CacheConfig, bucktLog domain.BucktLogger) (domain.Cach
 // registered handler, isolating each behind panic recovery so a misbehaving
 // handler can neither crash nor fail the originating operation. With no handlers
 // it returns a no-op, so the service can always call emit unconditionally.
-func newEmitter(handlers []events.Handler, log domain.BucktLogger) events.Handler {
+func newEmitter(handlers []events.Handler, log domain.BucketLogger) events.Handler {
 	if len(handlers) == 0 {
 		return func(context.Context, events.Event) {}
 	}
@@ -1321,10 +1321,10 @@ func newEmitter(handlers []events.Handler, log domain.BucktLogger) events.Handle
 	}
 }
 
-func dispatchEvent(ctx context.Context, h events.Handler, e events.Event, log domain.BucktLogger) {
+func dispatchEvent(ctx context.Context, h events.Handler, e events.Event, log domain.BucketLogger) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Warn(fmt.Sprintf("buckt: event handler for %s panicked: %v", e.Type, r))
+			log.Warn(fmt.Sprintf("bucket: event handler for %s panicked: %v", e.Type, r))
 		}
 	}()
 	h(ctx, e)
@@ -1336,7 +1336,7 @@ func newAppServices(
 	maxTrashBatch int,
 	backendOpTimeout time.Duration,
 	db *database.DB,
-	logger domain.BucktLogger,
+	logger domain.BucketLogger,
 	cacheManager domain.CacheManager,
 	activeBackend domain.FileBackend,
 	emit events.Handler,
@@ -1359,7 +1359,7 @@ func newAppServices(
 func resolveBackend(
 	mediaDir string,
 	bc BackendConfig,
-	log domain.BucktLogger,
+	log domain.BucketLogger,
 	lru domain.LRUCache,
 	rec metrics.Recorder,
 	migrationStore domain.MigrationStateStore,
@@ -1430,9 +1430,9 @@ func resolveBackend(
 }
 
 // resolveIfPlaceholder checks if the backend is a PlaceholderBackend (e.g. from
-// buckt.LocalBackend()) and replaces it with a real local backend instance.
+// bucket.LocalBackend()) and replaces it with a real local backend instance.
 // User-provided cloud backends pass through unchanged.
-func resolveIfPlaceholder(b Backend, mediaDir string, log domain.BucktLogger, lru domain.LRUCache) Backend {
+func resolveIfPlaceholder(b Backend, mediaDir string, log domain.BucketLogger, lru domain.LRUCache) Backend {
 	if _, ok := b.(*domain.PlaceholderBackend); ok {
 		return backend.NewLocalFileSystemService(log, mediaDir, lru)
 	}

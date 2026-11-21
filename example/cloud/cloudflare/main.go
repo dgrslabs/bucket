@@ -12,8 +12,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Rhaqim/buckt"
-	"github.com/Rhaqim/buckt/cloud/aws"
+	"github.com/dgrslabs/bucket"
+	"github.com/dgrslabs/bucket/cloud/aws"
 )
 
 func main() {
@@ -46,7 +46,7 @@ func main() {
 		return
 	}
 
-	client, err := buckt.Default(buckt.WithLog(buckt.LogConfig{}), buckt.WithBackend(r2Backend))
+	client, err := bucket.Default(bucket.WithLog(bucket.LogConfig{}), bucket.WithBackend(r2Backend))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -54,5 +54,5 @@ func main() {
 
 	defer client.Close()
 
-	fmt.Println("Buckt Client initialized successfully with Cloudflare R2 backend")
+	fmt.Println("Bucket Client initialized successfully with Cloudflare R2 backend")
 }

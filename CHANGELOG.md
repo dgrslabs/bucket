@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to buckt are documented here. This project follows
+All notable changes to bucket are documented here. This project follows
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
@@ -37,7 +37,7 @@ API removals.
   Cache-Control header for presigned downloads. Default:
   `private, max-age=<ttl>`.
 - `S3Backend.PresignGetURLWithHeaders` (and the optional
-  `domain.PresignHeadersBackend` capability that buckt detects).
+  `domain.PresignHeadersBackend` capability that bucket detects).
 
 ## [1.9.2] — unreleased
 
@@ -57,7 +57,7 @@ Additive; no API removals.
   return the new `ErrUnsupported`. For an S3/R2 object the correct key form is
   resolved first, so a URL for a migrated object doesn't 404. The web client
   adds `GET /presign/:file_id?ttl=15m` (501 when unsupported). Presigned URLs
-  bypass buckt's auth for their lifetime — keep the TTL short.
+  bypass bucket's auth for their lifetime — keep the TTL short.
 - **Direct (presigned) uploads — register/confirm** (`Client.PresignUpload` /
   `FinalizeUpload`, `PresignBackend.PresignPutURL`). `PresignUpload` reserves a
   file (returning a **stable file ID** immediately, for your app's tracking) plus
@@ -65,7 +65,7 @@ Additive; no API removals.
   on the write path; `FinalizeUpload` confirms the object landed and makes the
   file live, firing `file.uploaded` so handlers (e.g. derivative generation) run
   lazily. The reserved file is `pending` (new column, schema migration v7) and
-  hidden from listings until finalized. Because buckt never sees the bytes on
+  hidden from listings until finalized. Because bucket never sees the bytes on
   this path, these uploads are **not** deduplicated, scanned, or content-hashed.
   Web endpoints `POST /upload/presign` and `POST /upload/finalize` (form or
   JSON). `example/migration/s3` is a copy-paste local→S3 migration template.
@@ -80,7 +80,7 @@ Additive; no API removals.
 - **Expiring / temp files** (`SetFileTTL`, `SetFileExpiry`, `PurgeExpired`,
   `WithExpirySweeper`, and upload-with-TTL: `UploadFileWithTTL` /
   `UploadFileWithExpiry` / `UploadFileFromReaderWithTTLContext`). Give a file a
-  TTL and buckt permanently deletes it —
+  TTL and bucket permanently deletes it —
   blob, image derivatives, and metadata row — once it's due, emitting a
   `file.purged` event. A new indexed `expires_at` column (schema migration v6,
   additive) makes the sweep a cheap ranged query. The sweep is app-driven by
@@ -102,11 +102,11 @@ Additive; no API removals.
 ### ✨ Added
 
 - **Pluggable upload scanning** (`WithUploadScanner`, `pkg/scan`,
-  `ErrUploadRejected`). Register a `scan.Scanner` and buckt runs it on every
+  `ErrUploadRejected`). Register a `scan.Scanner` and bucket runs it on every
   upload's bytes at the single write chokepoint, before anything is committed —
   return an error to reject the file (malware, disallowed type) and nothing is
   stored, no `file.uploaded` event fires, and the caller gets `ErrUploadRejected`
-  wrapping the scanner's reason (branch with `errors.Is`). buckt ships no
+  wrapping the scanner's reason (branch with `errors.Is`). bucket ships no
   scanning engine by design (no AV dependencies in a storage library); the
   application supplies one — a ClamAV client, a VirusTotal lookup, a
   content-type allowlist, etc. Unlike event handlers (which fire *after* commit),
@@ -134,7 +134,7 @@ Additive; no API removals.
   could not be copied (re-run `MigrateAll` to retry them); the web `/backend`
   endpoint gained a `failed` field.
 - **`MigrateAll` is now resumable.** Each copied object is recorded in the
-  database (`buckt_migration_models`), so a migration interrupted by a
+  database (`bucket_migration_models`), so a migration interrupted by a
   restart/crash resumes from where it left off — already-copied files are skipped
   straight from the persisted state without re-scanning the target, and progress
   no longer restarts from zero. Persistence is best-effort (a recording failure
@@ -171,7 +171,7 @@ drive and observe a local → cloud storage migration. Additive; no API removals
 ### 🐛 Fixed
 
 - **Files bulk-migrated to S3/R2 were unreachable (`NoSuchKey` on read).** In
-  nested-namespace mode buckt keys blobs by a path with a leading slash
+  nested-namespace mode bucket keys blobs by a path with a leading slash
   (`/user/…`), but `MigrateAll` copies objects under the keys the local backend's
   `List()` reports, which are relative and drop the leading slash (`user/…`). The
   S3 backend used keys verbatim, so migrated objects landed under a key reads
@@ -186,7 +186,7 @@ drive and observe a local → cloud storage migration. Additive; no API removals
 ## [1.7.0]
 
 A backward-compatible **minor** release on top of v1.6.0 that adds opt-in
-primitives making buckt a better fit for event-driven and media-heavy apps —
+primitives making bucket a better fit for event-driven and media-heavy apps —
 file lifecycle events, arbitrary file metadata, content deduplication, and
 image derivatives (with a pluggable, WebP-capable processor). All additive; no
 API removals, safe to adopt.
@@ -194,27 +194,27 @@ API removals, safe to adopt.
 ### ✨ Added
 
 - **File lifecycle events** (`WithEventHandler`, new `pkg/events`). Opt-in,
-  dependency-free. Register one or more handlers and buckt calls them after each
+  dependency-free. Register one or more handlers and bucket calls them after each
   successful file operation with an `events.Event` (`file.uploaded`,
   `file.trashed`, `file.restored`, `file.purged`) carrying storage-level facts
-  (user, file id, name, path, content type, size, content hash). buckt performs
+  (user, file id, name, path, content type, size, content hash). bucket performs
   no processing itself — this is the seam for enqueuing uploads to an AI/OCR
   worker, generating derivatives, cache warming, etc., keeping the dependency
-  one-way (your worker imports buckt, never the reverse). Handlers run
+  one-way (your worker imports bucket, never the reverse). Handlers run
   synchronously after the operation (outside the DB transaction) and are isolated
   by panic recovery, so a slow or panicking handler can't corrupt or fail the
   originating call. No handlers = zero overhead.
 - **Arbitrary file metadata** (`SetFileMetadata` / `GetFileMetadata`). Attach a
   `map[string]string` of application data to any file — resource links (e.g. an
-  order id, so an app can model attachments without buckt knowing about orders),
+  order id, so an app can model attachments without bucket knowing about orders),
   AI-extracted tags, OCR text, etc. Stored as JSON on the file row via GORM's
   built-in serializer (no new dependency), added by migration `v4` (additive,
-  non-destructive), and returned on `GetFile`. buckt never interprets it.
+  non-destructive), and returned on `GetFile`. bucket never interprets it.
 - **Content deduplication** (`WithDedup`). Opt-in. When enabled, an upload whose
   bytes hash-match a file already in the same target folder (for the same owner)
   returns that existing file's ID and skips writing the blob again — collapsing
   the "same photo sent four times" case into one stored object and saving storage
-  and bandwidth. It reuses the content hash buckt already records, needs no schema
+  and bandwidth. It reuses the content hash bucket already records, needs no schema
   change, is scoped to the target folder so it composes with nested-namespace
   paths, and never resurrects a trashed duplicate. Off by default.
 - **Image derivatives** (`WithImageDerivatives`, `GenerateDerivatives`,
@@ -237,10 +237,10 @@ API removals, safe to adopt.
 - **Pluggable image processor** (`WithImageProcessor`, new `pkg/imageproc`).
   Derivative encoding goes through an `imageproc.Processor` interface, so you can
   add formats like **WebP** by supplying a processor from a module that imports
-  the encoder — buckt's core stays free of it (the same one-way rule the cloud
+  the encoder — bucket's core stays free of it (the same one-way rule the cloud
   backends follow; a processor implements a stdlib-only signature and never
-  imports buckt). Ships with a ready-made **pure-Go WebP** processor in the new
-  `github.com/Rhaqim/buckt/imageproc/webp` module (`webp.New()`, no cgo); set a
+  imports bucket). Ships with a ready-made **pure-Go WebP** processor in the new
+  `github.com/dgrslabs/bucket/imageproc/webp` module (`webp.New()`, no cgo); set a
   `DerivativeSpec.Format` of `"webp"` to use it.
 
 ## [1.6.0]
@@ -266,9 +266,9 @@ S3/Azure/GCP fixes. No API removals; safe to adopt.
   Class A/B operations can be counted precisely; `metrics.R2Class` maps op names
   to R2 billing classes. New `Client.StorageBytes(ctx)` (total stored bytes = R2
   storage dimension) and `Client.CacheStats()` (cache hits/misses = backend reads
-  avoided). Nil metrics (the default) means zero overhead. The backend↔buckt hook
+  avoided). Nil metrics (the default) means zero overhead. The backend↔bucket hook
   uses a stdlib-only callback signature, so cloud backends emit metrics without
-  importing buckt (the dependency stays one-way).
+  importing bucket (the dependency stays one-way).
 - **`Endpoint` override for the Azure and GCP backends** (`azure.Config.Endpoint`,
   `gcp.Config.Endpoint`), matching the AWS backend. Enables emulators (Azurite,
   fake-gcs-server) and private/self-hosted deployments. For GCP an endpoint skips
@@ -310,7 +310,7 @@ S3/Azure/GCP fixes. No API removals; safe to adopt.
   (as GCS returns it). Now uses `errors.Is`.
 - **Bundled web UI: viewing a file no longer returns `401`.** v1.5.0 moved
   `/serve` and `/stream` behind the header-based API guard, but browsers can't
-  attach the `buckt-User-ID` header to `<img>`, `<video>`, or download requests,
+  attach the `bucket-User-ID` header to `<img>`, `<video>`, or download requests,
   so the standalone UI (`WebModeUI`/`WebModeAll`) broke. These endpoints are now
   scoped by mode: the single-tenant UI serves content as the default owner (like
   the `/web` routes), standalone API mode still requires the header, and mount
@@ -351,11 +351,11 @@ anyway — the upgrade rewrites schema and relocates trashed rows.
 
 ### 💾 Database upgrade (automatic, non-destructive)
 
-The first `buckt.New(...)` on a v1.4.1 database runs a **versioned, ledger-tracked
+The first `bucket.New(...)` on a v1.4.1 database runs a **versioned, ledger-tracked
 migration runner** (new `internal/database/schema` package, modelled on the
 [loom](https://github.com/Rhaqim/loom) engine's `schema` package). It is safe to
 call on every startup — applied migrations are recorded in a
-`buckt_schema_migrations` ledger and never re-run.
+`bucket_schema_migrations` ledger and never re-run.
 
 - **v1.4.1 trashed data is preserved, not purged.** v1.4.1 hid deleted items with
   a `deleted_at` timestamp. Earlier development builds of this branch
@@ -373,24 +373,24 @@ call on every startup — applied migrations are recorded in a
   `ErrInvalidID`, `ErrInvalidName`, `ErrAlreadyExists`, `ErrFileTooLarge`,
   `ErrPathTraversal`, `ErrTrashBatchExceeded`, `ErrBackendUnavailable` — so
   callers can map failures to HTTP status codes without importing GORM. Available
-  as `buckt.ErrNotFound` and, identically, `buckterr.ErrNotFound` (new
-  `pkg/buckterr` package). The "record not found" case no longer leaks
+  as `bucket.ErrNotFound` and, identically, `bucketerr.ErrNotFound` (new
+  `pkg/bucketerr` package). The "record not found" case no longer leaks
   `gorm.ErrRecordNotFound`. The optional `LogConfig` logger is now purely for
   diagnostics — error handling should use these returned errors.
 - **Errors carry context and are no longer logged by the library.** Internally,
   errors are now wrapped with `fmt.Errorf(...: %w)` so the returned error carries
   full context (previously the context was only written to the log and the raw
-  error returned). buckt no longer logs the errors it returns; the caller
-  decides whether to log. Errors that buckt intentionally swallows (best-effort
+  error returned). bucket no longer logs the errors it returns; the caller
+  decides whether to log. Errors that bucket intentionally swallows (best-effort
   cache/secondary-backend operations) are still surfaced via `Warn`.
 - **`Client.Close()` now returns an error** (the database close error), matching
   the `io.Closer` idiom. Source-compatible: existing `defer client.Close()` and
   `client.Close()` statements keep compiling.
 - **Configurable table prefix** (`DBConfig.TablePrefix` / `WithTablePrefix`). Set
-  it for a **fresh** database that shares a schema with other tables; every buckt
+  it for a **fresh** database that shares a schema with other tables; every bucket
   table and the migration ledger are prefixed. The default is empty, preserving
   the historical `folder_models` / `file_models` names so existing databases are
-  adopted unchanged. buckt **refuses to start** if a prefix is set while legacy
+  adopted unchanged. bucket **refuses to start** if a prefix is set while legacy
   un-prefixed tables exist, rather than silently creating an empty prefixed schema
   and stranding your data.
 - Cloudflare **R2 / S3-compatible** backends via `cloud/aws` (`Config.Endpoint`,
@@ -424,8 +424,8 @@ call on every startup — applied migrations are recorded in a
    logic to `GetTrashFolder` since the field is now always empty.
 4. Start your app. The schema migration runs automatically and preserves trashed
    data. Verify your trashed items now appear under the `__trash__` folder.
-5. Do **not** set `TablePrefix` on an existing database — it points buckt at a
-   different, empty set of tables. Only use it for fresh databases (buckt refuses
+5. Do **not** set `TablePrefix` on an existing database — it points bucket at a
+   different, empty set of tables. Only use it for fresh databases (bucket refuses
    to start if you set one over legacy un-prefixed tables).
 
 ## [1.4.1]

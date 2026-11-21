@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/Rhaqim/buckt/internal/domain"
-	"github.com/Rhaqim/buckt/internal/mocks"
-	"github.com/Rhaqim/buckt/internal/model"
-	"github.com/Rhaqim/buckt/pkg/logger"
+	"github.com/dgrslabs/bucket/internal/domain"
+	"github.com/dgrslabs/bucket/internal/mocks"
+	"github.com/dgrslabs/bucket/internal/model"
+	"github.com/dgrslabs/bucket/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -75,13 +75,13 @@ func TestGetFolder(t *testing.T) {
 	jsonStr := string(jsonBytes)
 
 	// Mock cache get (simulate cache miss)
-	mockSetUp.cacheManager.On("GetBucktValue", "folder:"+folderID.String()).Return("", nil)
+	mockSetUp.cacheManager.On("GetBucketValue", "folder:"+folderID.String()).Return("", nil)
 
 	// Mock repo get
 	mockSetUp.folderRepository.On("GetFolder", folderID).Return(mockFolder, nil)
 
 	// Mock cache set with correct JSON string
-	mockSetUp.cacheManager.On("SetBucktValue", "folder:"+folderID.String(), jsonStr).Return(nil)
+	mockSetUp.cacheManager.On("SetBucketValue", "folder:"+folderID.String(), jsonStr).Return(nil)
 
 	folder, err := mockSetUp.folderService.GetFolder(ctx, "user1", folderID.String())
 	assert.NoError(t, err)

@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Rhaqim/buckt/internal/constant"
-	"github.com/Rhaqim/buckt/internal/model"
+	"github.com/dgrslabs/bucket/internal/constant"
+	"github.com/dgrslabs/bucket/internal/model"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
-// Migration is a single ordered, versioned change to buckt's schema. Version
+// Migration is a single ordered, versioned change to bucket's schema. Version
 // numbers are dense and start at 1. Up runs inside a transaction together with
 // the ledger insert (see Loader.runMigration), so a failed migration rolls back
 // cleanly and its version is never recorded. Mirrors loom's Migration, but Up
@@ -163,7 +163,7 @@ func migrateBaseline(ctx context.Context, tx *gorm.DB, prefix string, d Dialect)
 }
 
 // guardLegacyTables returns an actionable error when a prefix is set but the
-// database still holds legacy un-prefixed buckt tables and no prefixed ones —
+// database still holds legacy un-prefixed bucket tables and no prefixed ones —
 // the situation where blindly proceeding would create empty prefixed tables and
 // strand the existing data.
 func guardLegacyTables(tx *gorm.DB, prefix string) error {

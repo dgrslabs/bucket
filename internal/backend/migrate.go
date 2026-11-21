@@ -9,11 +9,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Rhaqim/buckt/internal/domain"
+	"github.com/dgrslabs/bucket/internal/domain"
 )
 
 type MigrationBackendService struct {
-	logger domain.BucktLogger
+	logger domain.BucketLogger
 
 	primaryBackend   domain.FileBackend
 	secondaryBackend domain.FileBackend
@@ -37,18 +37,18 @@ type migrationStats struct {
 	total     int64
 }
 
-// defaultMigrationConcurrency mirrors buckt.DefaultMigrationConcurrency. It is
+// defaultMigrationConcurrency mirrors bucket.DefaultMigrationConcurrency. It is
 // duplicated here (rather than imported) because the root package imports this
 // one, not the other way around.
 const defaultMigrationConcurrency = 8
 
-func NewMigrationBackend(bucktLogger domain.BucktLogger, primary domain.FileBackend, secondary domain.FileBackend, concurrency int, store domain.MigrationStateStore) domain.MigratableBackend {
+func NewMigrationBackend(bucketLogger domain.BucketLogger, primary domain.FileBackend, secondary domain.FileBackend, concurrency int, store domain.MigrationStateStore) domain.MigratableBackend {
 	if concurrency <= 0 {
 		concurrency = defaultMigrationConcurrency
 	}
-	bucktLogger.Info("🚀 Initialising migration backend: " + primary.Name() + " -> " + secondary.Name())
+	bucketLogger.Info("🚀 Initialising migration backend: " + primary.Name() + " -> " + secondary.Name())
 	return &MigrationBackendService{
-		logger:           bucktLogger,
+		logger:           bucketLogger,
 		primaryBackend:   primary,
 		secondaryBackend: secondary,
 		concurrency:      concurrency,
@@ -402,7 +402,7 @@ func (d *MigrationBackendService) secondarySkipSet(ctx context.Context) (map[str
 	return set, true
 }
 
-// normaliseKey strips a single leading slash so the two key forms buckt can
+// normaliseKey strips a single leading slash so the two key forms bucket can
 // produce ("/user/…" from nested-mode writes and "user/…" from a local List)
 // compare equal.
 func normaliseKey(key string) string {

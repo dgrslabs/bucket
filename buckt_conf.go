@@ -1,16 +1,16 @@
-package buckt
+package bucket
 
 import (
 	"database/sql"
 	"log"
 	"time"
 
-	"github.com/Rhaqim/buckt/internal/domain"
-	"github.com/Rhaqim/buckt/internal/model"
-	"github.com/Rhaqim/buckt/pkg/events"
-	"github.com/Rhaqim/buckt/pkg/imageproc"
-	"github.com/Rhaqim/buckt/pkg/metrics"
-	"github.com/Rhaqim/buckt/pkg/scan"
+	"github.com/dgrslabs/bucket/internal/domain"
+	"github.com/dgrslabs/bucket/internal/model"
+	"github.com/dgrslabs/bucket/pkg/events"
+	"github.com/dgrslabs/bucket/pkg/imageproc"
+	"github.com/dgrslabs/bucket/pkg/metrics"
+	"github.com/dgrslabs/bucket/pkg/scan"
 )
 
 type DBDrivers = model.DBDrivers // Type alias
@@ -32,12 +32,12 @@ type DBConfig struct {
 	Driver   DBDrivers
 	Database *sql.DB
 
-	// TablePrefix is prepended to every buckt table name (folder_models,
+	// TablePrefix is prepended to every bucket table name (folder_models,
 	// file_models, the migration ledger, ...). Leave empty (the default) to keep
-	// buckt's historical un-prefixed names — required for existing databases.
-	// Set it (e.g. "buckt_" or "myapp_") for a FRESH database that shares a
-	// schema with other tables. Changing it on an existing database points buckt
-	// at a different, empty set of tables, so pick it once up front; buckt
+	// bucket's historical un-prefixed names — required for existing databases.
+	// Set it (e.g. "bucket_" or "myapp_") for a FRESH database that shares a
+	// schema with other tables. Changing it on an existing database points bucket
+	// at a different, empty set of tables, so pick it once up front; bucket
 	// refuses to start if a prefix is set while legacy un-prefixed tables exist.
 	TablePrefix string
 }
@@ -142,14 +142,14 @@ type BackendConfig struct {
 //
 //	backendConfig := BackendConfig{
 //	 MigrationEnabled: true,
-//		Source: buckt.LocalBackend(),
+//		Source: bucket.LocalBackend(),
 //		Target: aws.S3Backend(),
 //	}
 func LocalBackend() Backend {
 	return &domain.PlaceholderBackend{Title: "local"}
 }
 
-// Config represents the configuration options for the Buckt application.
+// Config represents the configuration options for the Bucket application.
 // It includes settings for logging, media directory, and standalone mode.
 //
 // Fields:
@@ -220,7 +220,7 @@ type Config struct {
 
 	// Scanner, when non-nil, inspects every upload's bytes before they are
 	// committed to the backend and can reject the file (malware, disallowed
-	// type). buckt ships no scanner engine — supply one (ClamAV, VirusTotal, a
+	// type). bucket ships no scanner engine — supply one (ClamAV, VirusTotal, a
 	// content-type allowlist, …) via WithUploadScanner. A rejection surfaces as
 	// ErrUploadRejected and nothing is stored. Nil (the default) disables
 	// scanning with zero overhead.
@@ -282,9 +282,9 @@ func WithDB(driver DBDrivers, db *sql.DB) ConfigFunc {
 	}
 }
 
-// WithTablePrefix sets a prefix applied to every buckt table name. Use it only
+// WithTablePrefix sets a prefix applied to every bucket table name. Use it only
 // for a FRESH database that must share a schema with other tables; the default
-// empty prefix preserves buckt's historical table names, which existing
+// empty prefix preserves bucket's historical table names, which existing
 // databases depend on. See DBConfig.TablePrefix for the full caveats.
 func WithTablePrefix(prefix string) ConfigFunc {
 	return func(c *Config) {
@@ -371,7 +371,7 @@ type MigrationConfig struct {
 // Example:
 //
 //	s3, _ := aws.NewBackend(awsConfig)
-//	client, _ := buckt.Default(buckt.WithBackend(s3))
+//	client, _ := bucket.Default(bucket.WithBackend(s3))
 func WithBackend(backend Backend) ConfigFunc {
 	return func(c *Config) {
 		c.Backend.Source = backend
@@ -388,7 +388,7 @@ func WithBackend(backend Backend) ConfigFunc {
 // Example:
 //
 //	m := metrics.NewCollector()
-//	client, _ := buckt.Default(buckt.WithBackend(s3), buckt.WithMetrics(m))
+//	client, _ := bucket.Default(bucket.WithBackend(s3), bucket.WithMetrics(m))
 //	// ... later ...
 //	snap := m.Snapshot() // backend -> operation -> Stat
 func WithMetrics(r metrics.Recorder) ConfigFunc {
@@ -402,9 +402,9 @@ func WithMetrics(r metrics.Recorder) ConfigFunc {
 // GenerateDerivatives from a file.uploaded event handler so the CPU-bound
 // resizing runs in your worker, off the upload path. Supports JPEG and PNG.
 //
-//	buckt.WithImageDerivatives(
-//	    buckt.DerivativeSpec{Name: "thumbnail", MaxWidth: 200},
-//	    buckt.DerivativeSpec{Name: "medium", MaxWidth: 800},
+//	bucket.WithImageDerivatives(
+//	    bucket.DerivativeSpec{Name: "thumbnail", MaxWidth: 200},
+//	    bucket.DerivativeSpec{Name: "medium", MaxWidth: 800},
 //	)
 func WithImageDerivatives(specs ...DerivativeSpec) ConfigFunc {
 	return func(c *Config) {
@@ -414,7 +414,7 @@ func WithImageDerivatives(specs ...DerivativeSpec) ConfigFunc {
 
 // WithImageProcessor sets the image processor used by GenerateDerivatives,
 // replacing the built-in JPEG/PNG one. Use it to add formats such as WebP by
-// supplying a processor from a module that imports the encoder — buckt's core
+// supplying a processor from a module that imports the encoder — bucket's core
 // stays free of that dependency.
 func WithImageProcessor(p imageproc.Processor) ConfigFunc {
 	return func(c *Config) {
@@ -453,16 +453,16 @@ func WithEventHandler(h events.Handler) ConfigFunc {
 // error, the upload is rejected: no blob is written, the metadata row is rolled
 // back, and no file.uploaded event fires. The rejection is returned as
 // ErrUploadRejected wrapping the scanner's error, so callers can branch with
-// errors.Is(err, buckt.ErrUploadRejected) while still reading the reason.
+// errors.Is(err, bucket.ErrUploadRejected) while still reading the reason.
 //
-// buckt ships no scanning engine — the scanner is where you plug in ClamAV, a
+// bucket ships no scanning engine — the scanner is where you plug in ClamAV, a
 // VirusTotal lookup, a magic-byte/content-type allowlist, etc. The scanner runs
 // synchronously on the upload path and is shared across concurrent uploads, so
 // it must be safe for concurrent use and reasonably fast (or internally queued).
 //
 // Example:
 //
-//	client, _ := buckt.Default(buckt.WithUploadScanner(
+//	client, _ := bucket.Default(bucket.WithUploadScanner(
 //		scan.ScannerFunc(func(ctx context.Context, name string, data []byte) error {
 //			return clamav.Scan(ctx, data) // your engine
 //		}),
@@ -504,8 +504,8 @@ func WithPresignCacheControl(value string) ConfigFunc {
 // Example:
 //
 //	s3, _ := aws.NewBackend(awsConfig)
-//	client, _ := buckt.Default(buckt.WithMigration(buckt.MigrationConfig{
-//		From: buckt.LocalBackend(),
+//	client, _ := bucket.Default(bucket.WithMigration(bucket.MigrationConfig{
+//		From: bucket.LocalBackend(),
 //		To:   s3,
 //	}))
 func WithMigration(mc MigrationConfig) ConfigFunc {
@@ -517,7 +517,7 @@ func WithMigration(mc MigrationConfig) ConfigFunc {
 	}
 }
 
-// RegisterPrimaryBackend registers the primary backend for the Buckt application.
+// RegisterPrimaryBackend registers the primary backend for the Bucket application.
 //
 // Deprecated: Use WithBackend instead.
 func RegisterPrimaryBackend(backend Backend) ConfigFunc {
@@ -526,7 +526,7 @@ func RegisterPrimaryBackend(backend Backend) ConfigFunc {
 	}
 }
 
-// RegisterSecondaryBackend registers the secondary backend for the Buckt application.
+// RegisterSecondaryBackend registers the secondary backend for the Bucket application.
 //
 // Deprecated: Use WithMigration instead, which bundles the source, target, and
 // migration enable flag into a single call.
@@ -536,7 +536,7 @@ func RegisterSecondaryBackend(backend Backend) ConfigFunc {
 	}
 }
 
-// EnableMigration enables dual-write migration mode in the Buckt application.
+// EnableMigration enables dual-write migration mode in the Bucket application.
 //
 // Deprecated: Use WithMigration instead, which bundles the source, target, and
 // migration enable flag into a single call.
@@ -572,8 +572,8 @@ func WithBackendOpTimeout(d time.Duration) ConfigFunc {
 //
 // Example:
 //
-//	buckt.WithMaxFileSize(buckt.DefaultMaxFileSize) // 100MB
-//	buckt.WithMaxFileSize(50 * 1024 * 1024)         // 50MB
+//	bucket.WithMaxFileSize(bucket.DefaultMaxFileSize) // 100MB
+//	bucket.WithMaxFileSize(50 * 1024 * 1024)         // 50MB
 func WithMaxFileSize(size int64) ConfigFunc {
 	return func(c *Config) {
 		c.MaxFileSize = size

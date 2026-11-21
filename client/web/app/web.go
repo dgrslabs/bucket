@@ -3,18 +3,18 @@ package app
 import (
 	"time"
 
-	"github.com/Rhaqim/buckt"
-	"github.com/Rhaqim/buckt/client/web/domain"
-	"github.com/Rhaqim/buckt/pkg/fileutil"
-	"github.com/Rhaqim/buckt/pkg/response"
+	"github.com/dgrslabs/bucket"
+	"github.com/dgrslabs/bucket/client/web/domain"
+	"github.com/dgrslabs/bucket/pkg/fileutil"
+	"github.com/dgrslabs/bucket/pkg/response"
 	"github.com/gin-gonic/gin"
 )
 
 type WebService struct {
-	client *buckt.Client
+	client *bucket.Client
 }
 
-func NewWebService(client *buckt.Client) domain.WebService {
+func NewWebService(client *bucket.Client) domain.WebService {
 	return &WebService{
 		client: client,
 	}

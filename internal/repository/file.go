@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Rhaqim/buckt/internal/database"
-	"github.com/Rhaqim/buckt/internal/domain"
-	"github.com/Rhaqim/buckt/internal/model"
-	"github.com/Rhaqim/buckt/pkg/buckterr"
+	"github.com/dgrslabs/bucket/internal/database"
+	"github.com/dgrslabs/bucket/internal/domain"
+	"github.com/dgrslabs/bucket/internal/model"
+	"github.com/dgrslabs/bucket/pkg/bucketerr"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -63,7 +63,7 @@ func (f *FileRepository) MoveFile(ctx context.Context, file_id uuid.UUID, new_pa
 
 	if err := f.db.DB.WithContext(ctx).Where("id = ?", new_parent_id).First(&newParentFolder).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", "", fmt.Errorf("parent folder not found: %w", buckterr.ErrNotFound)
+			return "", "", fmt.Errorf("parent folder not found: %w", bucketerr.ErrNotFound)
 		}
 		return "", "", err
 	}
@@ -71,7 +71,7 @@ func (f *FileRepository) MoveFile(ctx context.Context, file_id uuid.UUID, new_pa
 	var file model.FileModel
 	if err := f.db.DB.WithContext(ctx).First(&file, file_id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", "", fmt.Errorf("file not found: %w", buckterr.ErrNotFound)
+			return "", "", fmt.Errorf("file not found: %w", bucketerr.ErrNotFound)
 		}
 		return "", "", err
 	}
@@ -93,7 +93,7 @@ func (f *FileRepository) RenameFile(ctx context.Context, file_id uuid.UUID, new_
 	var file model.FileModel
 	if err := f.db.DB.WithContext(ctx).First(&file, file_id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("file not found: %w", buckterr.ErrNotFound)
+			return fmt.Errorf("file not found: %w", bucketerr.ErrNotFound)
 		}
 		return err
 	}
@@ -249,7 +249,7 @@ func (f *FileRepository) RestoreFile(
 		var dest model.FolderModel
 		if err := tx.First(&dest, target).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return fmt.Errorf("restore target folder not found: %w", buckterr.ErrNotFound)
+				return fmt.Errorf("restore target folder not found: %w", bucketerr.ErrNotFound)
 			}
 			return err
 		}

@@ -1,10 +1,10 @@
-package buckt
+package bucket
 
 import (
 	"context"
 	"testing"
 
-	"github.com/Rhaqim/buckt/pkg/metrics"
+	"github.com/dgrslabs/bucket/pkg/metrics"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

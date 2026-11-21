@@ -1,5 +1,5 @@
-github.com/Rhaqim/buckt v1.9.2 h1:NjtII4SVzPcxwR4vGCMvLLMizbAu1R6seqWb6AWekmw=
-github.com/Rhaqim/buckt v1.9.2/go.mod h1:VCgy54cXzfku6IBcaPyzROOFJDde3vquy2tSKc54Ewg=
+github.com/dgrslabs/bucket v1.9.2 h1:NjtII4SVzPcxwR4vGCMvLLMizbAu1R6seqWb6AWekmw=
+github.com/dgrslabs/bucket v1.9.2/go.mod h1:VCgy54cXzfku6IBcaPyzROOFJDde3vquy2tSKc54Ewg=
 github.com/bytedance/gopkg v0.1.4 h1:oZnQwnX82KAIWb7033bEwtxvTqXcYMxDBaQxo5JJHWM=
 github.com/bytedance/gopkg v0.1.4/go.mod h1:v1zWfPm21Fb+OsyXN2VAHdL6TBb2L88anLQgdyje6R4=
 github.com/bytedance/sonic v1.15.3 h1:P3akjLPBtV/i6bHC6LbcLjY3KuoOvfiqF8wFHeP5IhY=

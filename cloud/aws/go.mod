@@ -1,4 +1,4 @@
-module github.com/Rhaqim/buckt/cloud/aws
+module github.com/dgrslabs/bucket/cloud/aws
 
 go 1.26.0
 

@@ -1,4 +1,4 @@
-// Package main runs the full-featured Buckt web UI (metrics, dedup, image
+// Package main runs the full-featured Bucket web UI (metrics, dedup, image
 // derivatives, and a file.uploaded handler) over one of three storage modes,
 // selected with -mode:
 //
@@ -26,11 +26,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/Rhaqim/buckt"
-	"github.com/Rhaqim/buckt/client/web"
-	"github.com/Rhaqim/buckt/cloud/aws"
-	"github.com/Rhaqim/buckt/pkg/events"
-	"github.com/Rhaqim/buckt/pkg/metrics"
+	"github.com/dgrslabs/bucket"
+	"github.com/dgrslabs/bucket/client/web"
+	"github.com/dgrslabs/bucket/cloud/aws"
+	"github.com/dgrslabs/bucket/pkg/events"
+	"github.com/dgrslabs/bucket/pkg/metrics"
 )
 
 func main() {
@@ -42,20 +42,20 @@ func main() {
 	flag.Parse()
 
 	// Feature set — identical across every storage mode.
-	opts := []buckt.ConfigFunc{
-		buckt.FlatNameSpaces(*flatNamespaces),
-		buckt.WithMetrics(metrics.NewCollector()),
-		buckt.WithDedup(),
-		buckt.WithImageDerivatives(
-			buckt.DerivativeSpec{Name: "thumbnail", MaxWidth: 200},
-			buckt.DerivativeSpec{Name: "medium", MaxWidth: 800},
+	opts := []bucket.ConfigFunc{
+		bucket.FlatNameSpaces(*flatNamespaces),
+		bucket.WithMetrics(metrics.NewCollector()),
+		bucket.WithDedup(),
+		bucket.WithImageDerivatives(
+			bucket.DerivativeSpec{Name: "thumbnail", MaxWidth: 200},
+			bucket.DerivativeSpec{Name: "medium", MaxWidth: 800},
 		),
 	}
 
-	// Optional: let buckt auto-delete files past their TTL. Set a TTL on a file
+	// Optional: let bucket auto-delete files past their TTL. Set a TTL on a file
 	// from the UI (the ⏳ menu), and the sweeper purges it on this interval.
 	if *expirySweep > 0 {
-		opts = append(opts, buckt.WithExpirySweeper(*expirySweep))
+		opts = append(opts, bucket.WithExpirySweeper(*expirySweep))
 		log.Printf("⏳ expiry sweeper on — purging expired files every %s", *expirySweep)
 	}
 
@@ -64,7 +64,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to initialize the database: %v", err)
 		}
-		opts = append(opts, buckt.WithDB(buckt.Postgres, db))
+		opts = append(opts, bucket.WithDB(bucket.Postgres, db))
 	}
 
 	// Storage mode only swaps the backend — everything above stays the same.
@@ -77,7 +77,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("migrate mode: %v", err)
 		}
-		opts = append(opts, buckt.WithMigration(buckt.MigrationConfig{From: buckt.LocalBackend(), To: store}))
+		opts = append(opts, bucket.WithMigration(bucket.MigrationConfig{From: bucket.LocalBackend(), To: store}))
 		migrating = true
 		log.Println("🔄 storage: migration (local → object store; existing files bulk-copying)")
 	case "r2":
@@ -85,7 +85,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("r2 mode: %v", err)
 		}
-		opts = append(opts, buckt.WithBackend(store))
+		opts = append(opts, bucket.WithBackend(store))
 		log.Println("☁️  storage: object store only")
 	default:
 		log.Fatalf("unknown -mode %q (use local | migrate | r2)", *mode)
@@ -93,7 +93,7 @@ func main() {
 
 	// client is referenced by the upload handler, so declare it first and assign
 	// with '=' (not ':=') to keep the closure bound to this variable.
-	var client *buckt.Client
+	var client *bucket.Client
 
 	// onUpload fires after every successful upload: generate image derivatives
 	// and tag the file. In production, enqueue this to a worker rather than
@@ -109,12 +109,12 @@ func main() {
 			log.Printf("setting metadata failed for %s: %v", e.FileID, err)
 		}
 	}
-	opts = append(opts, buckt.WithEventHandler(onUpload))
+	opts = append(opts, bucket.WithEventHandler(onUpload))
 
 	var err error
-	client, err = buckt.Default(opts...)
+	client, err = bucket.Default(opts...)
 	if err != nil {
-		log.Fatalf("Failed to initialize Buckt: %v", err)
+		log.Fatalf("Failed to initialize Bucket: %v", err)
 	}
 	defer client.Close()
 
@@ -129,14 +129,14 @@ func main() {
 		log.Fatalf("Failed to create web client: %v", err)
 	}
 
-	log.Printf("Serving the Buckt UI at http://localhost:%s/web/", *flagPort)
+	log.Printf("Serving the Bucket UI at http://localhost:%s/web/", *flagPort)
 	if err := webClient.Run(":" + *flagPort); err != nil {
-		log.Fatalf("Failed to start Buckt: %v", err)
+		log.Fatalf("Failed to start Bucket: %v", err)
 	}
 }
 
 // bulkMigrate kicks off MigrateAll and logs progress until it finishes.
-func bulkMigrate(client *buckt.Client) {
+func bulkMigrate(client *bucket.Client) {
 	ctx := context.Background()
 	if err := client.MigrateAll(ctx); err != nil {
 		log.Printf("could not start bulk migration: %v", err)
@@ -163,7 +163,7 @@ func bulkMigrate(client *buckt.Client) {
 
 // newObjectStore builds an S3-compatible backend (Cloudflare R2 by default) from
 // environment variables.
-func newObjectStore() (buckt.Backend, error) {
+func newObjectStore() (bucket.Backend, error) {
 	cfg := aws.Config{
 		AccessKey: os.Getenv("R2_ACCESS_KEY"),
 		SecretKey: os.Getenv("R2_SECRET_KEY"),

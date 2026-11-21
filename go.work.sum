@@ -532,7 +532,7 @@ github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/cloudmock v0
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.53.0/go.mod h1:cSgYe11MCNYunTnRXrKiR/tHc0eoKjICUuWpNZoVCOo=
 github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.55.0/go.mod h1:Mf6O40IAyB9zR/1J8nGDDPirZQQPbYJni8Yisy7NTMc=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
-github.com/Rhaqim/buckt v1.2.8-beta-fix/go.mod h1:aj9K3lCpOORD3rdVTddBYOtWTZPtJk9igbQHgw1lx14=
+github.com/dgrslabs/bucket v1.2.8-beta-fix/go.mod h1:aj9K3lCpOORD3rdVTddBYOtWTZPtJk9igbQHgw1lx14=
 github.com/andybalholm/brotli v1.2.8/go.mod h1:rzTDkvFWvIrjDXZHkuS16NPggd91W3kUSvPlQ1pLaKY=
 github.com/antlr4-go/antlr/v4 v4.13.1/go.mod h1:GKmUxMtwp6ZgGwZSva4eWPC5mS6vUAmOABFgjdkM7Nw=
 github.com/apache/thrift v0.25.0/go.mod h1:4lwyToijD9T70w7GlevFk7FnpY60Wv8I8krMkF6FkAo=

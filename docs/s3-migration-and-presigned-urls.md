@@ -1,21 +1,21 @@
 # Migrating to S3 + Presigned URLs — Integration Guide
 
-A guide for an application that already uses **buckt** with **local filesystem**
+A guide for an application that already uses **bucket** with **local filesystem**
 storage and wants to:
 
 1. **Move storage to AWS S3** with zero downtime, and
 2. **Serve and (optionally) receive files directly to/from S3** using presigned
    URLs, so bytes don't have to pass through the application server.
 
-It's written for a **Go backend** (where buckt lives) talking to an
+It's written for a **Go backend** (where bucket lives) talking to an
 **Astro/Svelte frontend**. The current shape is assumed to be:
 
 ```
-browser  ──upload──▶  Go backend  ──▶  buckt  ──▶  storage (local today)
-browser  ◀─download──  Go backend  ◀──  buckt  ◀──  storage
+browser  ──upload──▶  Go backend  ──▶  bucket  ──▶  storage (local today)
+browser  ◀─download──  Go backend  ◀──  bucket  ◀──  storage
 ```
 
-Nothing here changes buckt's **file ID** — it stays the source of truth your app
+Nothing here changes bucket's **file ID** — it stays the source of truth your app
 tracks files by, before and after every change below.
 
 ---
@@ -32,8 +32,8 @@ tracks files by, before and after every change below.
 
 ## Part 1 — Migrate local → S3
 
-This is **application-side config only** — buckt already does the work. Your
-upload/download flow is unchanged during and after the migration, so every buckt
+This is **application-side config only** — bucket already does the work. Your
+upload/download flow is unchanged during and after the migration, so every bucket
 feature (hashing, dedup, image derivatives, upload scanning, metadata) keeps
 working exactly as today.
 
@@ -46,11 +46,11 @@ is **no `Endpoint`** (that field is only for R2/MinIO-style S3-compatible stores
 import (
     "context"
 
-    "github.com/Rhaqim/buckt"
-    "github.com/Rhaqim/buckt/cloud/aws"
+    "github.com/dgrslabs/bucket"
+    "github.com/dgrslabs/bucket/cloud/aws"
 )
 
-func newS3() (buckt.Backend, error) {
+func newS3() (bucket.Backend, error) {
     s3, err := aws.NewBackend(aws.Config{
         AccessKey: os.Getenv("AWS_ACCESS_KEY_ID"),
         SecretKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
@@ -69,9 +69,9 @@ func newS3() (buckt.Backend, error) {
 }
 ```
 
-### 1.2 Switch buckt into migration mode (dual-write)
+### 1.2 Switch bucket into migration mode (dual-write)
 
-Instead of `buckt.WithBackend(local)`, wrap both backends. Every **new** upload is
+Instead of `bucket.WithBackend(local)`, wrap both backends. Every **new** upload is
 now written to **both** local and S3; reads fall back to S3 if local is missing a
 file.
 
@@ -79,10 +79,10 @@ file.
 s3, err := newS3()
 // ...
 
-client, err := buckt.Default(
+client, err := bucket.Default(
     // ...your existing options (WithDB, WithImageDerivatives, WithEventHandler, ...)
-    buckt.WithMigration(buckt.MigrationConfig{
-        From:        buckt.LocalBackend(), // current source of truth
+    bucket.WithMigration(bucket.MigrationConfig{
+        From:        bucket.LocalBackend(), // current source of truth
         To:          s3,                   // destination
         Concurrency: 16,                   // parallel copies for the bulk pass
     }),
@@ -128,9 +128,9 @@ Once `MigrationStatus` reports `done == total` and `MigrationFailures` is `0`,
 redeploy with S3 as the only backend:
 
 ```go
-client, err := buckt.Default(
+client, err := bucket.Default(
     // ...same options...
-    buckt.WithBackend(s3), // S3 only; local no longer written or read
+    bucket.WithBackend(s3), // S3 only; local no longer written or read
 )
 ```
 
@@ -166,7 +166,7 @@ url, err := client.PresignedURL(fileID, 15*time.Minute)
 // Direct URL for a generated image derivative (thumbnail, medium, ...):
 thumbURL, err := client.PresignedDerivativeURL(fileID, "thumbnail", 15*time.Minute)
 
-if errors.Is(err, buckt.ErrUnsupported) {
+if errors.Is(err, bucket.ErrUnsupported) {
     // Local backend or mid-migration — fall back to streaming (GetFileStream / /serve).
 }
 ```
@@ -181,10 +181,10 @@ GET /presign/:file_id?ttl=15m   →   { "status": "success", "url": "https://<bu
 as your other routes, so your existing auth applies.
 
 **Response headers.** On S3/R2 the URL signs response-header overrides, so the
-browser gets the Content-Type stored in buckt's database, `Content-Disposition:
+browser gets the Content-Type stored in bucket's database, `Content-Disposition:
 inline` for safe media (images, audio, video, PDF, plain text) or `attachment`
 for everything else, and `Cache-Control: private, max-age=<ttl>`. Change the
-caching policy with `buckt.WithPresignCacheControl("public, max-age=86400")`.
+caching policy with `bucket.WithPresignCacheControl("public, max-age=86400")`.
 Objects copied before these headers were added are served correctly too.
 
 ### 2.2 Frontend (Astro/Svelte)
@@ -231,11 +231,11 @@ async function presignedURL(fileId: string, ttl = "15m"): Promise<string> {
 ## Part 3 — Direct uploads (register / confirm)
 
 The reverse direction: let the browser upload **straight to S3**, so large files
-never pass through your server. This is a **two-step handshake**, and the buckt
+never pass through your server. This is a **two-step handshake**, and the bucket
 **file ID is returned in step 1**, so your app can start tracking the file
 immediately.
 
-> **Read this trade-off first.** On the direct path buckt **never sees the
+> **Read this trade-off first.** On the direct path bucket **never sees the
 > bytes**, so these uploads are **NOT deduplicated, NOT scanned, and NOT
 > content-hashed**, and image derivatives are generated **lazily** at finalize.
 > Also, on S3 uploads are **free ingress** — so this saves your **server's**
@@ -247,10 +247,10 @@ immediately.
 ### 3.1 The flow
 
 ```
-1. browser ──"I want to upload X"──▶ backend ──▶ buckt.PresignUpload
+1. browser ──"I want to upload X"──▶ backend ──▶ bucket.PresignUpload
                                        returns { fileID, uploadURL }
 2. browser ──PUT bytes──▶ S3          (directly, using uploadURL)
-3. browser ──"done, fileID, size"──▶ backend ──▶ buckt.FinalizeUpload
+3. browser ──"done, fileID, size"──▶ backend ──▶ bucket.FinalizeUpload
 ```
 
 Between steps 1 and 3 the file is **pending**: the row (and ID) exist, but the
@@ -261,7 +261,7 @@ file is hidden from listings and not readable until finalized.
 ```go
 // Step 1 — reserve. Returns a stable file ID + a presigned PUT URL.
 fileID, uploadURL, err := client.PresignUpload(userID, parentID, "video.mp4", "video/mp4", 15*time.Minute)
-if errors.Is(err, buckt.ErrUnsupported) {
+if errors.Is(err, bucket.ErrUnsupported) {
     // Local / migration — fall back to the normal upload endpoint.
 }
 
@@ -339,16 +339,16 @@ hidden pending row and possibly an orphan S3 object. Two easy guards:
 
 ## Error reference
 
-Branch on these with `errors.Is`; they're re-exported from the root `buckt`
+Branch on these with `errors.Is`; they're re-exported from the root `bucket`
 package. Suggested HTTP mappings are what the bundled web client uses.
 
 | Error | Meaning | HTTP |
 |---|---|---|
-| `buckt.ErrUnsupported` | Backend can't do this (presign on local, or mid-migration) | 501 |
-| `buckt.ErrNotFound` | File/derivative/object doesn't exist (e.g. finalize before the PUT landed) | 404 |
-| `buckt.ErrUploadRejected` | An upload scanner rejected the file (normal upload path) | 422 |
-| `buckt.ErrFileTooLarge` | Upload exceeds `WithMaxFileSize` | 413 |
-| `buckt.ErrBackendUnavailable` | Backend unreachable / feature not enabled | 503 |
+| `bucket.ErrUnsupported` | Backend can't do this (presign on local, or mid-migration) | 501 |
+| `bucket.ErrNotFound` | File/derivative/object doesn't exist (e.g. finalize before the PUT landed) | 404 |
+| `bucket.ErrUploadRejected` | An upload scanner rejected the file (normal upload path) | 422 |
+| `bucket.ErrFileTooLarge` | Upload exceeds `WithMaxFileSize` | 413 |
+| `bucket.ErrBackendUnavailable` | Backend unreachable / feature not enabled | 503 |
 
 ---
 
@@ -358,7 +358,7 @@ package. Suggested HTTP mappings are what the bundled web client uses.
    all features intact. Verify `MigrationFailures == 0`, then cut over.
 2. **Adopt presigned downloads** (Part 2). This is the real S3 cost saver (egress)
    and offloads your server on the high-volume read side. Frontend change only —
-   buckt already supports it.
+   bucket already supports it.
 3. **Adopt direct uploads selectively** (Part 3) — only for large/opaque files
    where server upload load actually hurts. Keep the normal `UploadFile` flow for
    images and anything needing dedup/scan/derivatives inline.

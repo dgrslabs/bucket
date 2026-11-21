@@ -17,8 +17,8 @@ import (
 
 // These tests exercise the per-API-call metrics against a real S3-compatible
 // endpoint (MinIO / Cloudflare R2). They are skipped unless BUCKT_MINIO_ENDPOINT
-// is set. Note this file imports NO buckt package — the metrics hook is a
-// stdlib-only callback, so backends stay independent of buckt.
+// is set. Note this file imports NO bucket package — the metrics hook is a
+// stdlib-only callback, so backends stay independent of bucket.
 
 func minioEnv(t *testing.T) (endpoint, key, secret, bucket string) {
 	t.Helper()
@@ -28,7 +28,7 @@ func minioEnv(t *testing.T) (endpoint, key, secret, bucket string) {
 	}
 	key = getenv("BUCKT_MINIO_KEY", "minio")
 	secret = getenv("BUCKT_MINIO_SECRET", "minio12345")
-	bucket = getenv("BUCKT_MINIO_BUCKET", "buckt-test")
+	bucket = getenv("BUCKT_MINIO_BUCKET", "bucket-test")
 	return
 }
 
@@ -82,7 +82,7 @@ func TestS3Backend_PerAPIMetrics_MinIO(t *testing.T) {
 		t.Fatalf("NewBackend: %v", err)
 	}
 
-	// Install a local recorder — a plain stdlib-typed callback, no buckt import.
+	// Install a local recorder — a plain stdlib-typed callback, no bucket import.
 	var mu sync.Mutex
 	counts := map[string]int{}
 	be.SetOpRecorder(func(op string, _ int64, _ time.Duration, _ error) {

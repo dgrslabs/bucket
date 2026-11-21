@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/Rhaqim/buckt/internal/domain"
+	"github.com/dgrslabs/bucket/internal/domain"
 )
 
 type Backend struct {

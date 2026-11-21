@@ -1,7 +1,7 @@
 package mocks
 
 import (
-	"github.com/Rhaqim/buckt/pkg/logger"
+	"github.com/dgrslabs/bucket/pkg/logger"
 	"github.com/stretchr/testify/mock"
 	"gorm.io/gorm"
 )
@@ -9,7 +9,7 @@ import (
 type MockDB struct {
 	mock.Mock
 	*gorm.DB
-	*logger.BucktLogger
+	*logger.BucketLogger
 }
 
 func (m *MockDB) Close() {

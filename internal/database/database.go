@@ -8,9 +8,9 @@ import (
 
 	_ "github.com/lib/pq"
 
-	"github.com/Rhaqim/buckt/internal/database/schema"
-	"github.com/Rhaqim/buckt/internal/domain"
-	"github.com/Rhaqim/buckt/internal/model"
+	"github.com/dgrslabs/bucket/internal/database/schema"
+	"github.com/dgrslabs/bucket/internal/domain"
+	"github.com/dgrslabs/bucket/internal/model"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -21,16 +21,16 @@ import (
 
 type DB struct {
 	*gorm.DB
-	log         domain.BucktLogger
+	log         domain.BucketLogger
 	external    bool
 	tablePrefix string
 }
 
 // NewDB creates a new database connection. tablePrefix is applied to every
 // table name via gorm's NamingStrategy; the default (empty) prefix preserves
-// buckt's historical table names (folder_models, file_models) so existing
+// bucket's historical table names (folder_models, file_models) so existing
 // databases keep working unchanged.
-func NewDB(sqlDBInstance *sql.DB, driver model.DBDrivers, log domain.BucktLogger, silence bool, tablePrefix string) (*DB, error) {
+func NewDB(sqlDBInstance *sql.DB, driver model.DBDrivers, log domain.BucketLogger, silence bool, tablePrefix string) (*DB, error) {
 	var external bool
 
 	// Define supported database drivers
@@ -80,7 +80,7 @@ func NewDB(sqlDBInstance *sql.DB, driver model.DBDrivers, log domain.BucktLogger
 		NamingStrategy: gormschema.NamingStrategy{TablePrefix: tablePrefix},
 		// Translate dialect-specific driver errors (e.g. Postgres 23505, SQLite
 		// "UNIQUE constraint failed") into gorm sentinels like ErrDuplicatedKey,
-		// so the repository layer can map them to buckterr.ErrAlreadyExists
+		// so the repository layer can map them to bucketerr.ErrAlreadyExists
 		// portably. Additive: First() still returns ErrRecordNotFound as before.
 		TranslateError: true,
 	}

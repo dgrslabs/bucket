@@ -1,13 +1,13 @@
-// Package webp provides a buckt image Processor that also encodes WebP, using a
+// Package webp provides a bucket image Processor that also encodes WebP, using a
 // pure-Go encoder (no cgo, no system libraries).
 //
-// It implements the exact method signature buckt's imageproc.Processor expects
-// WITHOUT importing buckt, so the dependency stays one-way — the same rule the
+// It implements the exact method signature bucket's imageproc.Processor expects
+// WITHOUT importing bucket, so the dependency stays one-way — the same rule the
 // cloud storage backends follow. Wire it in with:
 //
-//	client, _ := buckt.New(buckt.Config{
+//	client, _ := bucket.New(bucket.Config{
 //	    ImageProcessor: webp.New(),
-//	    Derivatives: []buckt.DerivativeSpec{
+//	    Derivatives: []bucket.DerivativeSpec{
 //	        {Name: "thumbnail", MaxWidth: 200, Format: "webp"},
 //	    },
 //	})

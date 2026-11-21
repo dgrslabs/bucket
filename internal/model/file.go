@@ -24,7 +24,7 @@ type FileModel struct {
 	// Metadata is arbitrary application key/value data attached to the file
 	// (e.g. resource links, AI-extracted tags, OCR text). Stored as JSON via
 	// GORM's built-in serializer, so there's no extra dependency and no schema
-	// churn as keys change. buckt never interprets it.
+	// churn as keys change. bucket never interprets it.
 	Metadata map[string]string `gorm:"serializer:json" json:"metadata,omitempty"`
 	// ExpiresAt, when set, marks the file for automatic permanent deletion at or
 	// after this time. PurgeExpired (called on a schedule, or by the optional

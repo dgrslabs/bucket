@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Rhaqim/buckt/internal/mocks"
-	"github.com/Rhaqim/buckt/pkg/logger"
+	"github.com/dgrslabs/bucket/internal/mocks"
+	"github.com/dgrslabs/bucket/pkg/logger"
 	"github.com/stretchr/testify/assert"
 )
 

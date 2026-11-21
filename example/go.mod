@@ -3,11 +3,11 @@ module example
 go 1.26.0
 
 require (
-	github.com/Rhaqim/buckt v1.9.2
-	github.com/Rhaqim/buckt/client/web v0.0.0-20260903173620-b20b944a4821
-	github.com/Rhaqim/buckt/cloud/aws v0.0.0-20260903173620-b20b944a4821
-	github.com/Rhaqim/buckt/cloud/azure v0.0.0-20260903173620-b20b944a4821
-	github.com/Rhaqim/buckt/cloud/gcp v0.0.0-20260903173620-b20b944a4821
+	github.com/dgrslabs/bucket v1.0.1
+	github.com/dgrslabs/bucket/client/web v0.0.0-20260903173620-b20b944a4821
+	github.com/dgrslabs/bucket/cloud/aws v0.0.0-20260903173620-b20b944a4821
+	github.com/dgrslabs/bucket/cloud/azure v0.0.0-20260903173620-b20b944a4821
+	github.com/dgrslabs/bucket/cloud/gcp v0.0.0-20260903173620-b20b944a4821
 )
 
 require (
@@ -132,12 +132,12 @@ require (
 )
 
 // add module from src folder
-replace github.com/Rhaqim/buckt => ../
+replace github.com/dgrslabs/bucket => ../
 
-replace github.com/Rhaqim/buckt/client/web => ../client/web
+replace github.com/dgrslabs/bucket/client/web => ../client/web
 
-replace github.com/Rhaqim/buckt/cloud/aws => ../cloud/aws
+replace github.com/dgrslabs/bucket/cloud/aws => ../cloud/aws
 
-replace github.com/Rhaqim/buckt/cloud/azure => ../cloud/azure
+replace github.com/dgrslabs/bucket/cloud/azure => ../cloud/azure
 
-replace github.com/Rhaqim/buckt/cloud/gcp => ../cloud/gcp
+replace github.com/dgrslabs/bucket/cloud/gcp => ../cloud/gcp

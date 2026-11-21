@@ -3,8 +3,8 @@ package app
 import (
 	"strconv"
 
-	"github.com/Rhaqim/buckt/pkg/fileutil"
-	"github.com/Rhaqim/buckt/pkg/response"
+	"github.com/dgrslabs/bucket/pkg/fileutil"
+	"github.com/dgrslabs/bucket/pkg/response"
 	"github.com/gin-gonic/gin"
 )
 

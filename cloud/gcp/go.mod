@@ -1,4 +1,4 @@
-module github.com/Rhaqim/buckt/cloud/gcp
+module github.com/dgrslabs/bucket/cloud/gcp
 
 go 1.26.0
 

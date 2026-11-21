@@ -1,4 +1,4 @@
-module github.com/Rhaqim/buckt/cloud/azure
+module github.com/dgrslabs/bucket/cloud/azure
 
 go 1.26.0
 

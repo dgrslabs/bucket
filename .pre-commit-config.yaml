@@ -1,4 +1,4 @@
-# Pre-commit hooks for buckt. Install once with:
+# Pre-commit hooks for bucket. Install once with:
 #
 #   pip install pre-commit   # or: brew install pre-commit
 #   pre-commit install

@@ -1,4 +1,4 @@
-package buckt
+package bucket
 
 import (
 	"testing"

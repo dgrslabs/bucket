@@ -1,20 +1,20 @@
-// Package metrics provides buckt's built-in, dependency-free operation metrics.
+// Package metrics provides bucket's built-in, dependency-free operation metrics.
 //
-// A Recorder receives one Op per storage-backend operation. buckt wraps every
+// A Recorder receives one Op per storage-backend operation. bucket wraps every
 // configured backend (local, S3, Azure, GCP, and the migration composite) in a
 // metering decorator that emits logical operations (put/get/list/...). A backend
 // may additionally emit finer-grained, per-API-call ops (e.g. the S3 backend
 // emits one Op per real S3 request, capturing pagination) by declaring a
 // SetOpRecorder(func(op string, bytes int64, dur time.Duration, err error))
-// method — buckt detects it structurally and injects a callback, so the backend
-// never imports buckt and the dependency stays one-way.
+// method — bucket detects it structurally and injects a callback, so the backend
+// never imports bucket and the dependency stays one-way.
 //
 // The built-in Collector is an in-memory Recorder with no third-party
-// dependencies — construct one, pass it via buckt.WithMetrics, and read counts
+// dependencies — construct one, pass it via bucket.WithMetrics, and read counts
 // with Snapshot:
 //
 //	m := metrics.NewCollector()
-//	client, _ := buckt.New(cfg, buckt.WithMetrics(m))
+//	client, _ := bucket.New(cfg, bucket.WithMetrics(m))
 //	// ... use client ...
 //	for backend, ops := range m.Snapshot() {
 //		for op, stat := range ops {
@@ -72,7 +72,7 @@ type Collector struct {
 	byOp map[string]map[string]*Stat // backend -> operation -> stat
 }
 
-// NewCollector returns an empty Collector ready to pass to buckt.WithMetrics.
+// NewCollector returns an empty Collector ready to pass to bucket.WithMetrics.
 func NewCollector() *Collector {
 	return &Collector{byOp: make(map[string]map[string]*Stat)}
 }

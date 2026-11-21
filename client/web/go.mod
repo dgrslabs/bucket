@@ -1,9 +1,9 @@
-module github.com/Rhaqim/buckt/client/web
+module github.com/dgrslabs/bucket/client/web
 
 go 1.26.0
 
 require (
-	github.com/Rhaqim/buckt v1.9.2
+	github.com/dgrslabs/bucket v1.0.1
 	github.com/gin-gonic/gin v1.12.0
 )
 
@@ -58,3 +58,6 @@ require (
 	gorm.io/driver/sqlite v1.6.0 // indirect
 	gorm.io/gorm v1.31.2 // indirect
 )
+
+// Local development: resolve the root module from this repo until v1.0.1 is tagged.
+replace github.com/dgrslabs/bucket => ../..

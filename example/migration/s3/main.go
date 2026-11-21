@@ -1,6 +1,6 @@
 // Package main is a copy-paste template for migrating an app from local
 // filesystem storage to AWS S3 with zero downtime — the "Phase 1" swap. It's
-// application-side wiring: buckt already does all the work.
+// application-side wiring: bucket already does all the work.
 //
 // The lifecycle:
 //  1. Run in migration mode (local is the source of truth, S3 the target). Every
@@ -8,7 +8,7 @@
 //  2. MigrateAll bulk-copies the files that already exist on local disk to S3
 //     (concurrent, resumable across restarts, retries transient failures).
 //  3. Once MigrationStatus reports completion with zero MigrationFailures, cut
-//     over: redeploy with buckt.WithBackend(s3) alone (drop local).
+//     over: redeploy with bucket.WithBackend(s3) alone (drop local).
 //
 // Real AWS S3 config differs from Cloudflare R2: set Region, and DON'T set an
 // Endpoint (that's the R2/MinIO override). Configure from the environment:
@@ -24,8 +24,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/Rhaqim/buckt"
-	"github.com/Rhaqim/buckt/cloud/aws"
+	"github.com/dgrslabs/bucket"
+	"github.com/dgrslabs/bucket/cloud/aws"
 )
 
 func main() {
@@ -37,10 +37,10 @@ func main() {
 	// Migration mode: local (the app's current storage) is the source of truth,
 	// S3 is the destination. Reuses ./db.sqlite + ./media, so files an earlier
 	// local-only run stored are picked up by MigrateAll below.
-	client, err := buckt.Default(
-		buckt.WithLog(buckt.LogConfig{Silence: true}),
-		buckt.WithMigration(buckt.MigrationConfig{
-			From:        buckt.LocalBackend(),
+	client, err := bucket.Default(
+		bucket.WithLog(bucket.LogConfig{Silence: true}),
+		bucket.WithMigration(bucket.MigrationConfig{
+			From:        bucket.LocalBackend(),
 			To:          s3,
 			Concurrency: 16, // tune for throughput vs memory / S3 rate limits
 		}),
@@ -77,12 +77,12 @@ func main() {
 	}
 
 	log.Println("✅ migration complete. Cut over by redeploying with:")
-	log.Println("     buckt.Default(buckt.WithBackend(s3))   // S3 only, drop local")
+	log.Println("     bucket.Default(bucket.WithBackend(s3))   // S3 only, drop local")
 }
 
 // newS3Backend builds an AWS S3 backend from the environment. Note: Region is
 // required and there is NO Endpoint (unlike R2/MinIO).
-func newS3Backend() (buckt.Backend, error) {
+func newS3Backend() (bucket.Backend, error) {
 	backend, err := aws.NewBackend(aws.Config{
 		AccessKey: os.Getenv("AWS_ACCESS_KEY_ID"),
 		SecretKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),

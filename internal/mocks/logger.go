@@ -4,12 +4,12 @@ import (
 	"io"
 	"log"
 
-	"github.com/Rhaqim/buckt/internal/domain"
+	"github.com/dgrslabs/bucket/internal/domain"
 )
 
 type NoopLogger struct{}
 
-var _ domain.BucktLogger = (*NoopLogger)(nil)
+var _ domain.BucketLogger = (*NoopLogger)(nil)
 
 func (NoopLogger) AddLogger(*log.Logger)                  {}
 func (NoopLogger) Errorf(string, ...any)                  {}

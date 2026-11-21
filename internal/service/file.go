@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Rhaqim/buckt/internal/domain"
-	"github.com/Rhaqim/buckt/internal/model"
-	"github.com/Rhaqim/buckt/internal/utils"
-	"github.com/Rhaqim/buckt/pkg/buckterr"
-	"github.com/Rhaqim/buckt/pkg/events"
-	"github.com/Rhaqim/buckt/pkg/scan"
+	"github.com/dgrslabs/bucket/internal/domain"
+	"github.com/dgrslabs/bucket/internal/model"
+	"github.com/dgrslabs/bucket/internal/utils"
+	"github.com/dgrslabs/bucket/pkg/bucketerr"
+	"github.com/dgrslabs/bucket/pkg/events"
+	"github.com/dgrslabs/bucket/pkg/scan"
 	"github.com/google/uuid"
 )
 
@@ -25,7 +25,7 @@ type FileService struct {
 	maxFileSize      int64
 	backendOpTimeout time.Duration
 
-	logger domain.BucktLogger
+	logger domain.BucketLogger
 
 	cache domain.CacheManager
 	repo  domain.FileRepository
@@ -48,7 +48,7 @@ type FileService struct {
 }
 
 func NewFileService(
-	bucktLogger domain.BucktLogger,
+	bucketLogger domain.BucketLogger,
 
 	cache domain.CacheManager,
 	fileRepository domain.FileRepository,
@@ -64,12 +64,12 @@ func NewFileService(
 	dedup bool,
 	scanner scan.Scanner,
 ) domain.FileService {
-	bucktLogger.Info("🚀 Initialising file services")
+	bucketLogger.Info("🚀 Initialising file services")
 	if emit == nil {
 		emit = func(context.Context, events.Event) {}
 	}
 	return &FileService{
-		logger: bucktLogger,
+		logger: bucketLogger,
 
 		cache: cache,
 
@@ -110,12 +110,12 @@ func (f *FileService) createFile(ctx context.Context, user_id, parent_id, file_n
 	// escape the parent folder's subtree (local backend) or be written verbatim
 	// as a cross-tenant object key (cloud backends).
 	if err := utils.ValidateFileName(file_name); err != nil {
-		return "", fmt.Errorf("invalid file name: %w", buckterr.ErrInvalidName)
+		return "", fmt.Errorf("invalid file name: %w", bucketerr.ErrInvalidName)
 	}
 
 	// Enforce max file size
 	if f.maxFileSize > 0 && int64(len(file_data)) > f.maxFileSize {
-		return "", fmt.Errorf("file size %d exceeds maximum allowed size %d bytes: %w", len(file_data), f.maxFileSize, buckterr.ErrFileTooLarge)
+		return "", fmt.Errorf("file size %d exceeds maximum allowed size %d bytes: %w", len(file_data), f.maxFileSize, bucketerr.ErrFileTooLarge)
 	}
 
 	// Detect and validate content type from actual file bytes
@@ -131,7 +131,7 @@ func (f *FileService) createFile(ctx context.Context, user_id, parent_id, file_n
 	// the single upload chokepoint — every upload path funnels through here.
 	if f.scanner != nil {
 		if err := f.scanner.Scan(ctx, file_name, file_data); err != nil {
-			return "", fmt.Errorf("%w: %w", buckterr.ErrUploadRejected, err)
+			return "", fmt.Errorf("%w: %w", bucketerr.ErrUploadRejected, err)
 		}
 	}
 
@@ -219,14 +219,14 @@ func (f *FileService) createFile(ctx context.Context, user_id, parent_id, file_n
 func (f *FileService) GetFile(ctx context.Context, file_id string) (*model.FileModel, error) {
 	fileID, err := uuid.Parse(file_id)
 	if err != nil {
-		return nil, fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return nil, fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	var file *model.FileModel
 
 	// Check cache first
 	if f.cache != nil {
-		cached, err := f.cache.GetBucktValue(ctx, file_id)
+		cached, err := f.cache.GetBucketValue(ctx, file_id)
 		if err != nil {
 			f.logger.Warn("failed to get file metadata from cache: " + err.Error())
 		}
@@ -252,7 +252,7 @@ func (f *FileService) GetFile(ctx context.Context, file_id string) (*model.FileM
 		// Store metadata in cache (without file data)
 		if f.cache != nil {
 			jsonData, _ := json.Marshal(file) // Ignore errors for now
-			_ = f.cache.SetBucktValue(ctx, file_id, string(jsonData))
+			_ = f.cache.SetBucketValue(ctx, file_id, string(jsonData))
 		}
 	}
 
@@ -271,14 +271,14 @@ func (f *FileService) GetFile(ctx context.Context, file_id string) (*model.FileM
 func (f *FileService) GetFileStream(ctx context.Context, file_id string) (*model.FileModel, io.ReadCloser, error) {
 	fileID, err := uuid.Parse(file_id)
 	if err != nil {
-		return nil, nil, fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return nil, nil, fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	var file *model.FileModel
 
 	// Check cache first
 	if f.cache != nil {
-		cached, err := f.cache.GetBucktValue(ctx, file_id)
+		cached, err := f.cache.GetBucketValue(ctx, file_id)
 		if err == nil && cached != nil { // Ensure cached value is not nil
 			cachedStr, ok := cached.(string)
 			if ok { // Ensure type assertion succeeds
@@ -300,7 +300,7 @@ func (f *FileService) GetFileStream(ctx context.Context, file_id string) (*model
 		// Store metadata in cache (without file data)
 		if f.cache != nil {
 			jsonData, _ := json.Marshal(file) // Ignore errors for now
-			_ = f.cache.SetBucktValue(ctx, file_id, string(jsonData))
+			_ = f.cache.SetBucketValue(ctx, file_id, string(jsonData))
 		}
 	}
 
@@ -316,7 +316,7 @@ func (f *FileService) GetFileStream(ctx context.Context, file_id string) (*model
 func (f *FileService) getFiles(ctx context.Context, parent_id string) ([]*model.FileModel, error) {
 	parentID, err := uuid.Parse(parent_id)
 	if err != nil {
-		return nil, fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return nil, fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	var files []*model.FileModel
@@ -326,7 +326,7 @@ func (f *FileService) getFiles(ctx context.Context, parent_id string) ([]*model.
 
 	// Check cache first
 	if f.cache != nil {
-		cached, err := f.cache.GetBucktValue(ctx, cacheKey)
+		cached, err := f.cache.GetBucketValue(ctx, cacheKey)
 		if err == nil && cached != nil {
 			if cachedStr, ok := cached.(string); ok {
 				var cachedFiles []*model.FileModel
@@ -347,7 +347,7 @@ func (f *FileService) getFiles(ctx context.Context, parent_id string) ([]*model.
 		// Store metadata in cache (without file data)
 		if f.cache != nil {
 			jsonData, _ := json.Marshal(files) // Ignore errors for now
-			_ = f.cache.SetBucktValue(ctx, cacheKey, string(jsonData))
+			_ = f.cache.SetBucketValue(ctx, cacheKey, string(jsonData))
 		}
 	}
 
@@ -395,12 +395,12 @@ func (f *FileService) GetFiles(ctx context.Context, parent_id string) ([]model.F
 func (f *FileService) MoveFile(ctx context.Context, file_id string, new_parent_id string) error {
 	fileID, err := uuid.Parse(file_id)
 	if err != nil {
-		return fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	newParentID, err := uuid.Parse(new_parent_id)
 	if err != nil {
-		return fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	// Move the file
@@ -425,7 +425,7 @@ func (f *FileService) MoveFile(ctx context.Context, file_id string, new_parent_i
 func (f *FileService) RestoreFile(ctx context.Context, user_id, file_id string) error {
 	fileID, err := uuid.Parse(file_id)
 	if err != nil {
-		return fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	file, err := f.repo.GetFile(ctx, fileID)
@@ -440,7 +440,7 @@ func (f *FileService) RestoreFile(ctx context.Context, user_id, file_id string) 
 
 	// Parent and path change — drop any cached copy.
 	if f.cache != nil {
-		_ = f.cache.DeleteBucktValue(ctx, file_id)
+		_ = f.cache.DeleteBucketValue(ctx, file_id)
 	}
 
 	_, _, err = f.repo.RestoreFile(ctx, fileID, target, func(oldPath, newPath string) error {
@@ -494,12 +494,12 @@ func (f *FileService) resolveRestoreTarget(ctx context.Context, user_id string, 
 // RenameFile implements domain.FileService.
 func (f *FileService) RenameFile(ctx context.Context, file_id string, new_name string) error {
 	if err := utils.ValidateFileName(new_name); err != nil {
-		return fmt.Errorf("invalid file name: %w", buckterr.ErrInvalidName)
+		return fmt.Errorf("invalid file name: %w", bucketerr.ErrInvalidName)
 	}
 
 	fileID, err := uuid.Parse(file_id)
 	if err != nil {
-		return fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	// Rename the file
@@ -513,12 +513,12 @@ func (f *FileService) RenameFile(ctx context.Context, file_id string, new_name s
 // UpdateFile implements domain.FileService.
 func (f *FileService) UpdateFile(ctx context.Context, user_id, file_id string, new_file_name string, new_file_data []byte) error {
 	if err := utils.ValidateFileName(new_file_name); err != nil {
-		return fmt.Errorf("invalid file name: %w", buckterr.ErrInvalidName)
+		return fmt.Errorf("invalid file name: %w", bucketerr.ErrInvalidName)
 	}
 
 	fileID, err := uuid.Parse(file_id)
 	if err != nil {
-		return fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	file, err := f.repo.GetFile(ctx, fileID)
@@ -565,7 +565,7 @@ func (f *FileService) DeleteFile(ctx context.Context, file_id string) (string, e
 
 	fileID, err := uuid.Parse(file_id)
 	if err != nil {
-		return parentID, fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return parentID, fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	var file *model.FileModel
@@ -616,7 +616,7 @@ func (f *FileService) ScrubFile(ctx context.Context, file_id string) (string, er
 
 	fileID, err := uuid.Parse(file_id)
 	if err != nil {
-		return parentID, fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return parentID, fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	// Check cache first (and invalidate it, since we're removing the file).
@@ -660,11 +660,11 @@ func (f *FileService) cachedFileAndInvalidate(ctx context.Context, file_id strin
 	if f.cache == nil {
 		return nil
 	}
-	cached, err := f.cache.GetBucktValue(ctx, file_id)
+	cached, err := f.cache.GetBucketValue(ctx, file_id)
 	if err != nil || cached == nil {
 		return nil
 	}
-	defer func() { _ = f.cache.DeleteBucktValue(ctx, file_id) }()
+	defer func() { _ = f.cache.DeleteBucketValue(ctx, file_id) }()
 
 	s, ok := cached.(string)
 	if !ok {
@@ -694,13 +694,13 @@ func (f *FileService) emitFile(ctx context.Context, t events.Type, file *model.F
 	})
 }
 
-// SetMetadata replaces the arbitrary key/value metadata stored on a file. buckt
+// SetMetadata replaces the arbitrary key/value metadata stored on a file. bucket
 // does not interpret it — use it for resource links, AI-extracted tags, OCR
 // text, etc. Passing nil or an empty map clears the metadata.
 func (f *FileService) SetMetadata(ctx context.Context, file_id string, metadata map[string]string) error {
 	fileID, err := uuid.Parse(file_id)
 	if err != nil {
-		return fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	if err := f.repo.SetMetadata(ctx, fileID, metadata); err != nil {
@@ -709,7 +709,7 @@ func (f *FileService) SetMetadata(ctx context.Context, file_id string, metadata 
 
 	// The cached copy (if any) now has stale metadata — drop it.
 	if f.cache != nil {
-		_ = f.cache.DeleteBucktValue(ctx, file_id)
+		_ = f.cache.DeleteBucketValue(ctx, file_id)
 	}
 	return nil
 }
@@ -719,7 +719,7 @@ func (f *FileService) SetMetadata(ctx context.Context, file_id string, metadata 
 func (f *FileService) SetExpiry(ctx context.Context, file_id string, at *time.Time) error {
 	fileID, err := uuid.Parse(file_id)
 	if err != nil {
-		return fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	if err := f.repo.SetExpiry(ctx, fileID, at); err != nil {
@@ -727,7 +727,7 @@ func (f *FileService) SetExpiry(ctx context.Context, file_id string, at *time.Ti
 	}
 
 	if f.cache != nil {
-		_ = f.cache.DeleteBucktValue(ctx, file_id)
+		_ = f.cache.DeleteBucketValue(ctx, file_id)
 	}
 	return nil
 }
@@ -744,11 +744,11 @@ func (f *FileService) FindExpired(ctx context.Context, now time.Time, limit int)
 // CreatePendingUpload reserves a metadata row for a file whose bytes will be
 // uploaded out of band (via a presigned URL) and returns its stable file ID and
 // the object key the bytes must land at. The row is marked pending — hidden from
-// listings — until FinalizeUpload is called. No dedup or scan runs (buckt never
+// listings — until FinalizeUpload is called. No dedup or scan runs (bucket never
 // sees the bytes on this path); derivatives are generated lazily at finalize.
 func (f *FileService) CreatePendingUpload(ctx context.Context, user_id, parent_id, file_name, content_type string) (string, string, error) {
 	if err := utils.ValidateFileName(file_name); err != nil {
-		return "", "", fmt.Errorf("invalid file name: %w", buckterr.ErrInvalidName)
+		return "", "", fmt.Errorf("invalid file name: %w", bucketerr.ErrInvalidName)
 	}
 	if content_type == "" {
 		content_type = "application/octet-stream"
@@ -788,7 +788,7 @@ func (f *FileService) CreatePendingUpload(ctx context.Context, user_id, parent_i
 func (f *FileService) FinalizeUpload(ctx context.Context, file_id string, size int64) (string, error) {
 	fileID, err := uuid.Parse(file_id)
 	if err != nil {
-		return "", fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return "", fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	// Reserved row — carries the object key the client uploaded to.
@@ -803,7 +803,7 @@ func (f *FileService) FinalizeUpload(ctx context.Context, file_id string, size i
 		return "", f.logger.WrapError("failed to verify uploaded object", err)
 	}
 	if !exists {
-		return "", fmt.Errorf("uploaded object not found for %s: %w", file_id, buckterr.ErrNotFound)
+		return "", fmt.Errorf("uploaded object not found for %s: %w", file_id, bucketerr.ErrNotFound)
 	}
 
 	finalized, err := f.repo.FinalizeUpload(ctx, fileID, size)
@@ -812,7 +812,7 @@ func (f *FileService) FinalizeUpload(ctx context.Context, file_id string, size i
 	}
 
 	if f.cache != nil {
-		_ = f.cache.DeleteBucktValue(ctx, file_id)
+		_ = f.cache.DeleteBucketValue(ctx, file_id)
 	}
 	f.emitFile(ctx, events.FileUploaded, finalized)
 
@@ -823,7 +823,7 @@ func (f *FileService) FinalizeUpload(ctx context.Context, file_id string, size i
 func (f *FileService) GetMetadata(ctx context.Context, file_id string) (map[string]string, error) {
 	fileID, err := uuid.Parse(file_id)
 	if err != nil {
-		return nil, fmt.Errorf("invalid id: %w", buckterr.ErrInvalidID)
+		return nil, fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
 	}
 
 	file, err := f.repo.GetFile(ctx, fileID)

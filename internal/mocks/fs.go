@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 
-	"github.com/Rhaqim/buckt/internal/domain"
-	"github.com/Rhaqim/buckt/internal/model"
+	"github.com/dgrslabs/bucket/internal/domain"
+	"github.com/dgrslabs/bucket/internal/model"
 	"github.com/stretchr/testify/mock"
 )
 

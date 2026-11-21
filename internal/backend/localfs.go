@@ -12,25 +12,25 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/Rhaqim/buckt/internal/domain"
-	"github.com/Rhaqim/buckt/internal/model"
-	"github.com/Rhaqim/buckt/pkg/buckterr"
+	"github.com/dgrslabs/bucket/internal/domain"
+	"github.com/dgrslabs/bucket/internal/model"
+	"github.com/dgrslabs/bucket/pkg/bucketerr"
 	"golang.org/x/sync/singleflight"
 )
 
-// ErrPathTraversal wraps the public buckterr.ErrPathTraversal sentinel so
+// ErrPathTraversal wraps the public bucketerr.ErrPathTraversal sentinel so
 // callers can errors.Is against it while keeping this package-level variable for
 // existing internal references.
-var ErrPathTraversal = fmt.Errorf("path escapes media directory: %w", buckterr.ErrPathTraversal)
+var ErrPathTraversal = fmt.Errorf("path escapes media directory: %w", bucketerr.ErrPathTraversal)
 
 type LocalFileSystemService struct {
-	logger   domain.BucktLogger
+	logger   domain.BucketLogger
 	mediaDir string
 	g        singleflight.Group
 	cache    domain.LRUCache
 }
 
-func NewLocalFileSystemService(logger domain.BucktLogger, mediaDir string, cache domain.LRUCache) domain.FileBackend {
+func NewLocalFileSystemService(logger domain.BucketLogger, mediaDir string, cache domain.LRUCache) domain.FileBackend {
 	logger.Info("🚀 Initialising local file system backend")
 	return &LocalFileSystemService{
 		logger:   logger,
@@ -184,7 +184,7 @@ func (bfs *LocalFileSystemService) List(ctx context.Context, prefix string) ([]s
 
 // isOSJunk reports whether name is a file the OS or a file manager drops into
 // directories on its own (Finder metadata, AppleDouble forks, Windows thumbnail
-// caches). They are never buckt uploads, so List skips them — otherwise a bulk
+// caches). They are never bucket uploads, so List skips them — otherwise a bulk
 // local -> cloud migration copies and counts them. Deliberately a narrow
 // denylist: dot-named files in general are valid uploads and must still list.
 func isOSJunk(name string) bool {

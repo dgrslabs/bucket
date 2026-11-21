@@ -9,7 +9,7 @@ import (
 
 	"maps"
 
-	"github.com/Rhaqim/buckt/internal/model"
+	"github.com/dgrslabs/bucket/internal/model"
 )
 
 type MetadataService interface {

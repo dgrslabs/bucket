@@ -1,4 +1,4 @@
-package buckt_web_testing
+package bucket_web_testing
 
 import (
 	"flag"
@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/Rhaqim/buckt"
-	"github.com/Rhaqim/buckt/client/web"
-	"github.com/Rhaqim/buckt/pkg/metrics"
+	"github.com/dgrslabs/bucket"
+	"github.com/dgrslabs/bucket/client/web"
+	"github.com/dgrslabs/bucket/pkg/metrics"
 )
 
 func main() {
@@ -21,12 +21,12 @@ func main() {
 	flagPort := flag.String("port", port, "Port to run the server on")
 	flag.Parse()
 
-	client, err := buckt.Default(
-		buckt.FlatNameSpaces(true),
-		buckt.WithMetrics(metrics.NewCollector()), // surface backend op metrics at /buckt/metrics
+	client, err := bucket.Default(
+		bucket.FlatNameSpaces(true),
+		bucket.WithMetrics(metrics.NewCollector()), // surface backend op metrics at /bucket/metrics
 	)
 	if err != nil {
-		log.Fatalf("Failed to initialize Buckt: %v", err)
+		log.Fatalf("Failed to initialize Bucket: %v", err)
 	}
 	defer client.Close() // Ensure resources are cleaned up
 
@@ -43,8 +43,8 @@ func main() {
 	// Create a custom multiplexer
 	mux := http.NewServeMux()
 
-	// Mount the Buckt router under /buckt
-	mux.Handle("/buckt/", http.StripPrefix("/buckt", webClient.Handler()))
+	// Mount the Bucket router under /bucket
+	mux.Handle("/bucket/", http.StripPrefix("/bucket", webClient.Handler()))
 
 	// Add additional routes
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

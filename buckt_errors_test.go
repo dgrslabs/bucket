@@ -1,10 +1,10 @@
-package buckt
+package bucket
 
 import (
 	"errors"
 	"testing"
 
-	"github.com/Rhaqim/buckt/pkg/buckterr"
+	"github.com/dgrslabs/bucket/pkg/bucketerr"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,9 +46,9 @@ func TestClientSentinelErrors(t *testing.T) {
 		assert.ErrorIs(t, err, ErrAlreadyExists)
 	})
 
-	t.Run("root re-export equals buckterr value", func(t *testing.T) {
+	t.Run("root re-export equals bucketerr value", func(t *testing.T) {
 		// The same underlying value, so errors.Is works via either package.
-		assert.True(t, errors.Is(ErrNotFound, buckterr.ErrNotFound))
-		assert.Same(t, ErrInvalidName, buckterr.ErrInvalidName)
+		assert.True(t, errors.Is(ErrNotFound, bucketerr.ErrNotFound))
+		assert.Same(t, ErrInvalidName, bucketerr.ErrInvalidName)
 	})
 }

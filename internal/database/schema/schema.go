@@ -1,8 +1,8 @@
-// Package schema provides buckt's versioned migration runner. It mirrors the
+// Package schema provides bucket's versioned migration runner. It mirrors the
 // structure of the loom engine's schema package — a dense, ordered list of
 // migrations recorded in a ledger so each runs exactly once — but runs over a
 // *gorm.DB instead of raw database/sql, so migrations can reuse GORM's
-// AutoMigrate for buckt's model-defined baseline.
+// AutoMigrate for bucket's model-defined baseline.
 //
 // Apply migrations with:
 //
@@ -10,7 +10,7 @@
 //	err := loader.Apply(ctx, db)
 //
 // Migrations live in migrations.go as a dense, ordered list. Each runs exactly
-// once and is recorded in the buckt_schema_migrations ledger.
+// once and is recorded in the bucket_schema_migrations ledger.
 package schema
 
 import (
@@ -42,18 +42,18 @@ func DialectOf(db *gorm.DB) Dialect {
 // migrations have run. The active ledger name is this value with the loader's
 // table prefix applied (see Loader.ledgerTable), so it tracks whichever schema
 // the prefix selects.
-const migrationsTable = "buckt_schema_migrations"
+const migrationsTable = "bucket_schema_migrations"
 
-// Logger is the minimal logging surface the loader needs. domain.BucktLogger
+// Logger is the minimal logging surface the loader needs. domain.BucketLogger
 // satisfies it, but the schema package depends only on this narrow interface so
-// it stays decoupled from the rest of buckt.
+// it stays decoupled from the rest of bucket.
 type Logger interface {
 	Info(message string)
 	Infof(format string, args ...any)
 	Warn(message string)
 }
 
-// Loader applies buckt's versioned schema migrations idempotently, tracked in a
+// Loader applies bucket's versioned schema migrations idempotently, tracked in a
 // ledger so each runs exactly once. Mirrors loom's schema.Loader.
 type Loader struct {
 	dialect Dialect
@@ -63,7 +63,7 @@ type Loader struct {
 
 // NewLoader creates a Loader for the given dialect. prefix is the table-name
 // prefix that must match the gorm NamingStrategy prefix the database was opened
-// with. The default (empty) prefix preserves buckt's historical table names
+// with. The default (empty) prefix preserves bucket's historical table names
 // (folder_models, file_models), so existing databases are adopted unchanged.
 func NewLoader(dialect Dialect, log Logger, prefix string) *Loader {
 	return &Loader{dialect: dialect, log: log, prefix: prefix}
@@ -84,11 +84,11 @@ func (l *Loader) ledgerTable() string { return l.prefix + migrationsTable }
 // can race on the ledger insert, one failing with a duplicate version).
 func (l *Loader) Apply(ctx context.Context, db *gorm.DB) error {
 	if err := l.ensureLedger(db); err != nil {
-		return fmt.Errorf("buckt schema: ledger: %w", err)
+		return fmt.Errorf("bucket schema: ledger: %w", err)
 	}
 	applied, err := l.appliedVersions(db)
 	if err != nil {
-		return fmt.Errorf("buckt schema: read ledger: %w", err)
+		return fmt.Errorf("bucket schema: read ledger: %w", err)
 	}
 	for _, m := range migrations() {
 		if applied[m.Version] {
@@ -96,7 +96,7 @@ func (l *Loader) Apply(ctx context.Context, db *gorm.DB) error {
 		}
 		l.log.Infof("🚀 applying schema migration %d (%s)...", m.Version, m.Name)
 		if err := l.runMigration(ctx, db, m); err != nil {
-			return fmt.Errorf("buckt schema: migration %d (%s): %w", m.Version, m.Name, err)
+			return fmt.Errorf("bucket schema: migration %d (%s): %w", m.Version, m.Name, err)
 		}
 		l.log.Info("✅ migration " + m.Name + " applied")
 	}

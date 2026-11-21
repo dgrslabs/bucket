@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/Rhaqim/buckt/internal/database"
-	"github.com/Rhaqim/buckt/internal/model"
-	"github.com/Rhaqim/buckt/pkg/logger"
+	"github.com/dgrslabs/bucket/internal/database"
+	"github.com/dgrslabs/bucket/internal/model"
+	"github.com/dgrslabs/bucket/pkg/logger"
 	"github.com/stretchr/testify/assert"
 )
 

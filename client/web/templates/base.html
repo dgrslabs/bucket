@@ -5,13 +5,13 @@
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<meta name="color-scheme" content="light dark" />
-		<title>{{ .Title }} - Buckt</title>
+		<title>{{ .Title }} - Bucket</title>
 
 		<!-- No-flash theme init: apply the saved/system theme before paint. -->
 		<script>
 			(function () {
 				try {
-					var t = localStorage.getItem("buckt-theme");
+					var t = localStorage.getItem("bucket-theme");
 					if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 					if (t === "dark") document.documentElement.classList.add("dark");
 				} catch (e) {}
@@ -60,7 +60,7 @@
 			<div class="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
 				<a href="/web/" class="flex items-center gap-2 font-bold text-blue-600 dark:text-blue-400 shrink-0">
 					<svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-					<span class="hidden sm:inline">Buckt</span>
+					<span class="hidden sm:inline">Bucket</span>
 				</a>
 
 				<div class="flex-1 min-w-0">{{ template "toolbar" . }}</div>
@@ -94,7 +94,7 @@
 		</main>
 
 		<footer class="border-t border-slate-200 dark:border-slate-800 text-slate-400 text-xs py-3 text-center">
-			Buckt File Manager
+			Bucket File Manager
 		</footer>
 
 		<!-- Usage / metrics slide-over -->
@@ -114,7 +114,7 @@
 		<script>
 			function toggleTheme() {
 				var dark = document.documentElement.classList.toggle("dark");
-				try { localStorage.setItem("buckt-theme", dark ? "dark" : "light"); } catch (e) {}
+				try { localStorage.setItem("bucket-theme", dark ? "dark" : "light"); } catch (e) {}
 			}
 
 			function fmtBytes(n) {
@@ -132,7 +132,7 @@
 			async function renderUsage() {
 				var body = document.getElementById("usage-body");
 				try {
-					var r = await fetch("/metrics", { headers: { "buckt-User-ID": "default" } });
+					var r = await fetch("/metrics", { headers: { "bucket-User-ID": "default" } });
 					var m = await r.json();
 					var hits = m.cache.hits, miss = m.cache.misses, tot = hits + miss;
 					var rate = tot ? Math.round((hits / tot) * 100) : 0;
@@ -162,7 +162,7 @@
 					} else if (m.metrics_enabled) {
 						html += '<p class="text-slate-500">No backend operations recorded yet. Upload or download a file to see per-operation counts here.</p>';
 					} else {
-						html += '<p class="text-slate-500">Backend operation metrics are off. Enable them with <code class="px-1 rounded bg-slate-100 dark:bg-slate-800">buckt.WithMetrics(metrics.NewCollector())</code>.</p>';
+						html += '<p class="text-slate-500">Backend operation metrics are off. Enable them with <code class="px-1 rounded bg-slate-100 dark:bg-slate-800">bucket.WithMetrics(metrics.NewCollector())</code>.</p>';
 					}
 					body.innerHTML = html;
 				} catch (e) {

@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Rhaqim/buckt/internal/domain"
-	"github.com/Rhaqim/buckt/internal/mocks"
-	"github.com/Rhaqim/buckt/internal/model"
-	"github.com/Rhaqim/buckt/pkg/buckterr"
-	"github.com/Rhaqim/buckt/pkg/logger"
-	"github.com/Rhaqim/buckt/pkg/scan"
+	"github.com/dgrslabs/bucket/internal/domain"
+	"github.com/dgrslabs/bucket/internal/mocks"
+	"github.com/dgrslabs/bucket/internal/model"
+	"github.com/dgrslabs/bucket/pkg/bucketerr"
+	"github.com/dgrslabs/bucket/pkg/logger"
+	"github.com/dgrslabs/bucket/pkg/scan"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -126,7 +126,7 @@ func TestCreateFile_ScannerRejectsUpload(t *testing.T) {
 
 	_, err := mockSetUp.fileService.CreateFile(ctx, "user1", "parent_id", "virus.exe", "application/octet-stream", []byte("malicious"))
 	assert.Error(t, err)
-	assert.ErrorIs(t, err, buckterr.ErrUploadRejected)
+	assert.ErrorIs(t, err, bucketerr.ErrUploadRejected)
 	assert.ErrorIs(t, err, scanErr)
 
 	// Rejection happens before any DB or backend work — none of these run.
@@ -166,9 +166,9 @@ func TestGetFiles(t *testing.T) {
 
 	var jsonStr string
 
-	mockSetUp.cacheManager.On("GetBucktValue", "files:"+parentID.String()).Return(jsonStr, nil)
+	mockSetUp.cacheManager.On("GetBucketValue", "files:"+parentID.String()).Return(jsonStr, nil)
 
-	mockSetUp.cacheManager.On("SetBucktValue", "files:"+parentID.String(), mock.Anything).Return(nil)
+	mockSetUp.cacheManager.On("SetBucketValue", "files:"+parentID.String(), mock.Anything).Return(nil)
 
 	mockSetUp.fileRepository.On("GetFiles", parentID).Return(fileModels, nil)
 
@@ -226,8 +226,8 @@ func TestDeleteFile_PermanentDeleteFromTrash(t *testing.T) {
 		Path: "/user/__trash__/file.txt",
 	}
 
-	mockSetUp.cacheManager.On("GetBucktValue", fileID.String()).Return("", nil)
-	mockSetUp.cacheManager.On("DeleteBucktValue", fileID.String()).Return(nil)
+	mockSetUp.cacheManager.On("GetBucketValue", fileID.String()).Return("", nil)
+	mockSetUp.cacheManager.On("DeleteBucketValue", fileID.String()).Return(nil)
 	mockSetUp.fileRepository.On("GetFile", fileID).Return(fileModel, nil)
 
 	// Repo indicates permanent delete via newPath == ""
@@ -254,8 +254,8 @@ func TestDeleteFile_MoveToTrashNested(t *testing.T) {
 		Path: "/user/photos/sunset.jpg",
 	}
 
-	mockSetUp.cacheManager.On("GetBucktValue", fileID.String()).Return("", nil)
-	mockSetUp.cacheManager.On("DeleteBucktValue", fileID.String()).Return(nil)
+	mockSetUp.cacheManager.On("GetBucketValue", fileID.String()).Return("", nil)
+	mockSetUp.cacheManager.On("DeleteBucketValue", fileID.String()).Return(nil)
 	mockSetUp.fileRepository.On("GetFile", fileID).Return(fileModel, nil)
 
 	oldPath := "/user/photos/sunset.jpg"
@@ -284,8 +284,8 @@ func TestDeleteFile_MoveToTrashFlatNamespace(t *testing.T) {
 		Path: "abc123.jpg",
 	}
 
-	mockSetUp.cacheManager.On("GetBucktValue", fileID.String()).Return("", nil)
-	mockSetUp.cacheManager.On("DeleteBucktValue", fileID.String()).Return(nil)
+	mockSetUp.cacheManager.On("GetBucketValue", fileID.String()).Return("", nil)
+	mockSetUp.cacheManager.On("DeleteBucketValue", fileID.String()).Return(nil)
 	mockSetUp.fileRepository.On("GetFile", fileID).Return(fileModel, nil)
 
 	// Flat mode: repo returns same path for old and new
@@ -314,10 +314,10 @@ func TestScrubFile(t *testing.T) {
 	var jsonStr string
 
 	// Mock cache retrieval
-	mockSetUp.cacheManager.On("GetBucktValue", fileID.String()).Return(jsonStr, nil)
+	mockSetUp.cacheManager.On("GetBucketValue", fileID.String()).Return(jsonStr, nil)
 
 	// Mock cache deletion
-	mockSetUp.cacheManager.On("DeleteBucktValue", fileID.String()).Return(nil)
+	mockSetUp.cacheManager.On("DeleteBucketValue", fileID.String()).Return(nil)
 
 	// Mock repository retrieval
 	mockSetUp.fileRepository.On("GetFile", fileID).Return(fileModel, nil)
@@ -344,13 +344,13 @@ func TestGetFile_CacheHit(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(fileModel)
 
-	mockSetUp.cacheManager.On("GetBucktValue", fileID.String()).Return(string(jsonData), nil)
+	mockSetUp.cacheManager.On("GetBucketValue", fileID.String()).Return(string(jsonData), nil)
 
-	mockSetUp.cacheManager.On("GetBucktValue", fileModel.Path).Return(nil, nil)
+	mockSetUp.cacheManager.On("GetBucketValue", fileModel.Path).Return(nil, nil)
 
 	mockSetUp.backend.On("Get", fileModel.Path).Return([]byte("file data"), nil)
 
-	mockSetUp.cacheManager.On("SetBucktValue", fileModel.Path, []byte("file data")).Return(nil)
+	mockSetUp.cacheManager.On("SetBucketValue", fileModel.Path, []byte("file data")).Return(nil)
 
 	file, err := mockSetUp.fileService.GetFile(ctx, fileID.String())
 	assert.NoError(t, err)
@@ -368,12 +368,12 @@ func TestGetFile_CacheMiss_RepoHit(t *testing.T) {
 		Path: "/parent/folder/file.txt",
 	}
 
-	mockSetUp.cacheManager.On("GetBucktValue", fileID.String()).Return(nil, nil)
+	mockSetUp.cacheManager.On("GetBucketValue", fileID.String()).Return(nil, nil)
 	mockSetUp.fileRepository.On("GetFile", fileID).Return(fileModel, nil)
-	mockSetUp.cacheManager.On("SetBucktValue", fileID.String(), mock.Anything).Return(nil)
+	mockSetUp.cacheManager.On("SetBucketValue", fileID.String(), mock.Anything).Return(nil)
 	mockSetUp.backend.On("Get", fileModel.Path).Return([]byte("file data"), nil)
-	mockSetUp.cacheManager.On("GetBucktValue", fileModel.Path).Return(nil, nil)
-	mockSetUp.cacheManager.On("SetBucktValue", fileModel.Path, []byte("file data")).Return(nil)
+	mockSetUp.cacheManager.On("GetBucketValue", fileModel.Path).Return(nil, nil)
+	mockSetUp.cacheManager.On("SetBucketValue", fileModel.Path, []byte("file data")).Return(nil)
 
 	file, err := mockSetUp.fileService.GetFile(ctx, fileID.String())
 	assert.NoError(t, err)
@@ -387,7 +387,7 @@ func TestGetFile_CacheMiss_RepoMiss(t *testing.T) {
 
 	fileID := uuid.New()
 
-	mockSetUp.cacheManager.On("GetBucktValue", fileID.String()).Return(nil, nil)
+	mockSetUp.cacheManager.On("GetBucketValue", fileID.String()).Return(nil, nil)
 	mockSetUp.fileRepository.On("GetFile", fileID).Return(nil, fmt.Errorf("file not found"))
 
 	file, err := mockSetUp.fileService.GetFile(ctx, fileID.String())
@@ -406,7 +406,7 @@ func TestGetFile_CacheHit_FileDataCacheHit(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(fileModel)
 
-	mockSetUp.cacheManager.On("GetBucktValue", fileID.String()).Return(string(jsonData), nil)
+	mockSetUp.cacheManager.On("GetBucketValue", fileID.String()).Return(string(jsonData), nil)
 
 	mockSetUp.backend.On("Get", fileModel.Path).Return([]byte("file data"), nil)
 
@@ -427,10 +427,10 @@ func TestGetFile_CacheHit_FileDataCacheMiss(t *testing.T) {
 	}
 	jsonData, _ := json.Marshal(fileModel)
 
-	mockSetUp.cacheManager.On("GetBucktValue", fileID.String()).Return(string(jsonData), nil)
-	mockSetUp.cacheManager.On("GetBucktValue", fileModel.Path).Return(nil, nil)
+	mockSetUp.cacheManager.On("GetBucketValue", fileID.String()).Return(string(jsonData), nil)
+	mockSetUp.cacheManager.On("GetBucketValue", fileModel.Path).Return(nil, nil)
 	mockSetUp.backend.On("Get", fileModel.Path).Return([]byte("file data"), nil)
-	mockSetUp.cacheManager.On("SetBucktValue", fileModel.Path, []byte("file data")).Return(nil)
+	mockSetUp.cacheManager.On("SetBucketValue", fileModel.Path, []byte("file data")).Return(nil)
 
 	file, err := mockSetUp.fileService.GetFile(ctx, fileID.String())
 	assert.NoError(t, err)
@@ -449,8 +449,8 @@ func TestGetFilesMetaData(t *testing.T) {
 	}
 
 	var jsonStr string
-	mockSetUp.cacheManager.On("GetBucktValue", "files:"+parentID.String()).Return(jsonStr, nil)
-	mockSetUp.cacheManager.On("SetBucktValue", "files:"+parentID.String(), mock.Anything).Return(nil)
+	mockSetUp.cacheManager.On("GetBucketValue", "files:"+parentID.String()).Return(jsonStr, nil)
+	mockSetUp.cacheManager.On("SetBucketValue", "files:"+parentID.String(), mock.Anything).Return(nil)
 	mockSetUp.fileRepository.On("GetFiles", parentID).Return(fileModels, nil)
 
 	files, err := mockSetUp.fileService.GetFilesMetadata(ctx, parentID.String())

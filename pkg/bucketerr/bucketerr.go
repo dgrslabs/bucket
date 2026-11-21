@@ -1,24 +1,24 @@
-// Package buckterr defines the sentinel errors buckt returns from its public
+// package bucketerr defines the sentinel errors bucket returns from its public
 // API. Consumers branch on them with errors.Is to react to specific failures
-// without depending on buckt's internal storage layer (GORM, the filesystem, or
+// without depending on bucket's internal storage layer (GORM, the filesystem, or
 // a cloud SDK):
 //
 //	id, err := client.UploadFile(user, parent, name, ct, data)
 //	switch {
-//	case errors.Is(err, buckterr.ErrInvalidName):
+//	case errors.Is(err, bucketerr.ErrInvalidName):
 //		http.Error(w, "bad file name", http.StatusBadRequest)
-//	case errors.Is(err, buckterr.ErrFileTooLarge):
+//	case errors.Is(err, bucketerr.ErrFileTooLarge):
 //		http.Error(w, "file too large", http.StatusRequestEntityTooLarge)
 //	case err != nil:
 //		http.Error(w, "internal error", http.StatusInternalServerError)
 //	}
 //
-// The same values are re-exported from the root buckt package (buckt.ErrNotFound
-// == buckterr.ErrNotFound), so either import works with errors.Is.
+// The same values are re-exported from the root bucket package (bucket.ErrNotFound
+// == bucketerr.ErrNotFound), so either import works with errors.Is.
 //
 // Errors are always wrapped with %w and carry a human-readable message; use
 // errors.Is for control flow and err.Error() for logging.
-package buckterr
+package bucketerr
 
 import "errors"
 

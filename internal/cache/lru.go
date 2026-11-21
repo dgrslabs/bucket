@@ -3,8 +3,8 @@ package cache
 import (
 	"sync/atomic"
 
-	"github.com/Rhaqim/buckt/internal/domain"
 	"github.com/dgraph-io/ristretto/v2"
+	"github.com/dgrslabs/bucket/internal/domain"
 )
 
 type FileCache struct {

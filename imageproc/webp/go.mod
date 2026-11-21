@@ -1,4 +1,4 @@
-module github.com/Rhaqim/buckt/imageproc/webp
+module github.com/dgrslabs/bucket/imageproc/webp
 
 go 1.26.0
 

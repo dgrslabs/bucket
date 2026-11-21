@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Rhaqim/buckt/internal/database/schema"
+	"github.com/dgrslabs/bucket/internal/database/schema"
 	_ "github.com/lib/pq" // registers the "postgres" database/sql driver
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +15,7 @@ import (
 )
 
 // pgGorm opens a gorm connection to BUCKT_PG_DSN (or skips), dropping any
-// existing buckt tables so each run starts clean.
+// existing bucket tables so each run starts clean.
 func pgGorm(t *testing.T) *gorm.DB {
 	t.Helper()
 	dsn := os.Getenv("BUCKT_PG_DSN")
@@ -28,7 +28,7 @@ func pgGorm(t *testing.T) *gorm.DB {
 
 	gdb, err := gorm.Open(gormpg.New(gormpg.Config{DriverName: "postgres", Conn: sqlDB}), &gorm.Config{})
 	require.NoError(t, err)
-	for _, tbl := range []string{"file_models", "folder_models", "buckt_schema_migrations"} {
+	for _, tbl := range []string{"file_models", "folder_models", "bucket_schema_migrations"} {
 		require.NoError(t, gdb.Exec("DROP TABLE IF EXISTS "+tbl+" CASCADE").Error)
 	}
 	return gdb
@@ -94,7 +94,7 @@ func TestApply_PreservesLegacyTrashOnV141Upgrade_Postgres(t *testing.T) {
 	require.NoError(t, loader.Apply(context.Background(), gdb))
 
 	var versions []int
-	require.NoError(t, gdb.Raw(`SELECT version FROM buckt_schema_migrations ORDER BY version`).Scan(&versions).Error)
+	require.NoError(t, gdb.Raw(`SELECT version FROM bucket_schema_migrations ORDER BY version`).Scan(&versions).Error)
 	assert.Equal(t, []int{1, 2, 3, 4, 5, 6, 7}, versions)
 
 	assert.False(t, colExistsPG(t, gdb, "file_models", "deleted_at"))
@@ -139,6 +139,6 @@ func TestApply_FreshDatabase_Postgres(t *testing.T) {
 	assert.False(t, colExistsPG(t, gdb, "file_models", "deleted_at"))
 
 	var versions []int
-	require.NoError(t, gdb.Raw(`SELECT version FROM buckt_schema_migrations ORDER BY version`).Scan(&versions).Error)
+	require.NoError(t, gdb.Raw(`SELECT version FROM bucket_schema_migrations ORDER BY version`).Scan(&versions).Error)
 	assert.Equal(t, []int{1, 2, 3, 4, 5, 6, 7}, versions)
 }

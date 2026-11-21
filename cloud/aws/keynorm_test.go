@@ -11,7 +11,7 @@ func TestAltKey(t *testing.T) {
 		{"/user/root_folder/Assets/x.jpg", "user/root_folder/Assets/x.jpg", true}, // nested (leading slash)
 		{"user/root_folder/Assets/x.jpg", "user/root_folder/Assets/x.jpg", false}, // already stripped
 		{"abc123.jpg", "abc123.jpg", false},                                       // flat mode
-		{".buckt_derivatives/id/thumbnail", ".buckt_derivatives/id/thumbnail", false},
+		{".bucket_derivatives/id/thumbnail", ".bucket_derivatives/id/thumbnail", false},
 		{"/", "", true},
 	}
 	for _, c := range cases {

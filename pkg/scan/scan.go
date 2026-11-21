@@ -1,18 +1,18 @@
-// Package scan defines buckt's pluggable upload-scanning hook.
+// Package scan defines bucket's pluggable upload-scanning hook.
 //
-// A Scanner inspects a file's bytes on the upload path, before buckt commits
+// A Scanner inspects a file's bytes on the upload path, before bucket commits
 // them to the storage backend, and can reject the upload by returning an error.
-// buckt intentionally ships no scanning engine of its own — bundling an
+// bucket intentionally ships no scanning engine of its own — bundling an
 // antivirus or content classifier would drag heavy, deployment-specific
 // dependencies into a storage library. Instead the consuming application
 // supplies a Scanner: a ClamAV client, a VirusTotal lookup, a magic-byte /
 // content-type allowlist, or any combination.
 //
-// Register one with buckt.WithUploadScanner. Because every upload path funnels
+// Register one with bucket.WithUploadScanner. Because every upload path funnels
 // through a single write chokepoint, a Scanner is guaranteed to see every file
 // before it is stored — a caller cannot forget to wire scanning in per call
 // site. A rejected upload never touches the backend and never fires a
-// file.uploaded event; the failure surfaces as buckt.ErrUploadRejected wrapping
+// file.uploaded event; the failure surfaces as bucket.ErrUploadRejected wrapping
 // the Scanner's own error.
 package scan
 

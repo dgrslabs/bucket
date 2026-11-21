@@ -4,25 +4,25 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Rhaqim/buckt"
+	"github.com/dgrslabs/bucket"
 )
 
 func main() {
-	opts := buckt.Config{
-		Log: buckt.LogConfig{
+	opts := bucket.Config{
+		Log: bucket.LogConfig{
 			LogTerminal: true,
 			LogFile:     "logs",
 		},
 		MediaDir: "media",
 	}
 
-	client, err := buckt.New(opts)
+	client, err := bucket.New(opts)
 	if err != nil {
-		log.Fatalf("Failed to initialize Buckt: %v", err)
+		log.Fatalf("Failed to initialize Bucket: %v", err)
 	}
 	defer client.Close() // Ensure resources are cleaned up
 
-	// Use the Buckt services directly
+	// Use the Bucket services directly
 
 	//sample file
 	var file []byte = []byte("sample file")

@@ -5,8 +5,8 @@ PORT ?= 8080
 # Version to point client/web at when syncing (e.g. make sync-client VERSION=v1.6.0).
 VERSION ?= latest
 
-PKG_NAME = buckt
-PKG = github.com/Rhaqim/${PKG_NAME}
+PKG_NAME = bucket
+PKG = github.com/dgrslabs/${PKG_NAME}
 BUILD_DIR = bin
 
 all: build run
@@ -21,7 +21,7 @@ test:
 	go test ./... -v
 
 # Test every module (root + cloud/* + client/web) through the workspace, so the
-# sub-modules exercise the local buckt, not their pinned release.
+# sub-modules exercise the local bucket, not their pinned release.
 test-all:
 	go test ./...
 	cd client/web && go test ./...
@@ -30,13 +30,13 @@ test-all:
 	cd cloud/gcp && go test ./...
 
 # During development, go.work keeps client/web (and the example) on the local
-# buckt automatically. For a RELEASE, after tagging a new buckt version, point
+# bucket automatically. For a RELEASE, after tagging a new bucket version, point
 # client/web at it and tidy so it builds standalone:
 #   make sync-client VERSION=v1.6.0
-# (The cloud/* modules do not depend on buckt — the dependency is one-way — so
+# (The cloud/* modules do not depend on bucket — the dependency is one-way — so
 # they need no sync.)
 sync-client:
-	cd client/web && go get github.com/Rhaqim/buckt@$(VERSION) && go mod tidy
+	cd client/web && go get github.com/dgrslabs/bucket@$(VERSION) && go mod tidy
 
 coverage:
 	go test ./... -coverprofile=coverage.out

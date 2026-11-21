@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/Rhaqim/buckt/internal/database/schema"
+	"github.com/dgrslabs/bucket/internal/database/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	gormsqlite "gorm.io/driver/sqlite"
@@ -116,7 +116,7 @@ func TestApply_PreservesLegacyTrashOnV141Upgrade(t *testing.T) {
 
 	// Ledger recorded both migrations.
 	var versions []int
-	require.NoError(t, gdb.Raw(`SELECT version FROM buckt_schema_migrations ORDER BY version`).Scan(&versions).Error)
+	require.NoError(t, gdb.Raw(`SELECT version FROM bucket_schema_migrations ORDER BY version`).Scan(&versions).Error)
 	assert.Equal(t, []int{1, 2, 3, 4, 5, 6, 7}, versions)
 
 	// deleted_at columns are gone from both tables.
@@ -179,7 +179,7 @@ func TestApply_IsIdempotent(t *testing.T) {
 	assert.Equal(t, int64(4), folderCount, "no extra trash folder created on re-run")
 
 	var versions []int
-	require.NoError(t, gdb.Raw(`SELECT version FROM buckt_schema_migrations ORDER BY version`).Scan(&versions).Error)
+	require.NoError(t, gdb.Raw(`SELECT version FROM bucket_schema_migrations ORDER BY version`).Scan(&versions).Error)
 	assert.Equal(t, []int{1, 2, 3, 4, 5, 6, 7}, versions)
 }
 
@@ -195,7 +195,7 @@ func TestApply_FreshDatabase(t *testing.T) {
 	assert.False(t, colExists(t, gdb, "folder_models", "deleted_at"))
 
 	var versions []int
-	require.NoError(t, gdb.Raw(`SELECT version FROM buckt_schema_migrations ORDER BY version`).Scan(&versions).Error)
+	require.NoError(t, gdb.Raw(`SELECT version FROM bucket_schema_migrations ORDER BY version`).Scan(&versions).Error)
 	assert.Equal(t, []int{1, 2, 3, 4, 5, 6, 7}, versions)
 }
 
@@ -211,7 +211,7 @@ func TestApply_WithTablePrefix(t *testing.T) {
 	assert.True(t, colExists(t, gdb, prefix+"file_models", "user_id"))
 
 	var versions []int
-	require.NoError(t, gdb.Raw(`SELECT version FROM `+prefix+`buckt_schema_migrations ORDER BY version`).Scan(&versions).Error)
+	require.NoError(t, gdb.Raw(`SELECT version FROM `+prefix+`bucket_schema_migrations ORDER BY version`).Scan(&versions).Error)
 	assert.Equal(t, []int{1, 2, 3, 4, 5, 6, 7}, versions)
 
 	// No un-prefixed tables were created.
