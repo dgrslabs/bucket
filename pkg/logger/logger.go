@@ -1,0 +1,139 @@
+package logger
+
+import (
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/Rhaqim/buckt/internal/domain"
+)
+
+type BucktLogger struct {
+	Logger  *log.Logger
+	silence bool
+}
+
+type LogFunc func(domain.BucktLogger)
+
+func NewLogger(logFile string, logTerminal, silence bool, opts ...LogFunc) domain.BucktLogger {
+	bucktLogger := &BucktLogger{silence: silence}
+
+	for _, opt := range opts {
+		opt(bucktLogger)
+	}
+
+	if !logTerminal && logFile == "" {
+		logTerminal = true
+	}
+
+	var logWriter io.Writer
+
+	// Setup log file if provided
+	if logFile != "" {
+		logDir := filepath.Join(logFile, time.Now().Format("2006-01-02"))
+		if err := os.MkdirAll(logDir, 0755); err != nil {
+			log.Fatal("Failed to create log directory:", err)
+		}
+
+		infoLogFile, err := os.OpenFile(filepath.Join(logDir, "info.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatal("Failed to open info log file:", err)
+		}
+
+		if logTerminal && !silence {
+			logWriter = io.MultiWriter(os.Stdout, infoLogFile)
+		} else {
+			logWriter = infoLogFile
+		}
+	} else {
+		// If no log file, use stdout for terminal output or discard if silenced
+		if logTerminal && !silence {
+			logWriter = os.Stdout
+		} else {
+			logWriter = io.Discard
+		}
+	}
+
+	if bucktLogger.Logger == nil {
+		bucktLogger.Logger = log.New(logWriter, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	}
+
+	return bucktLogger
+}
+
+func WithLogger(logger *log.Logger) LogFunc {
+	return func(l domain.BucktLogger) {
+		l.AddLogger(logger)
+	}
+}
+
+func (l *BucktLogger) AddLogger(logger *log.Logger) {
+	l.Logger = logger
+}
+
+func (l *BucktLogger) GetLogger() *log.Logger {
+	return l.Logger
+}
+
+// Writer returns the writer for the info logger
+func (l *BucktLogger) Writer() io.Writer {
+	return l.Logger.Writer()
+}
+
+// Info logs an info message
+func (l *BucktLogger) Info(message string) {
+	if l.silence {
+		return
+	}
+	l.Logger.Println(message)
+}
+
+// infof logs an info message with formatting
+func (l *BucktLogger) Infof(format string, args ...any) {
+	if l.silence {
+		return
+	}
+	l.Logger.Printf(format, args...)
+}
+
+// Warn logs a warning message
+func (l *BucktLogger) Warn(message string) {
+	if l.silence {
+		return
+	}
+	l.Logger.Println("WARN:", message)
+}
+
+// Error logs an error message
+func (l *BucktLogger) Errorf(format string, args ...any) {
+	if l.silence {
+		return
+	}
+	l.Logger.Printf("ERROR: "+format, args...)
+}
+
+// WrapError returns err wrapped with message as context using %w, so
+// errors.Is / errors.As continue to work through it. It does NOT log: buckt
+// returns errors to the caller rather than logging them (logging is the
+// application's decision). Use Info/Warn/Errorf for diagnostics you are
+// deliberately not returning. Returns nil when err is nil.
+func (l *BucktLogger) WrapError(message string, err error) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("%s: %w", message, err)
+}
+
+// WrapErrorf is like WrapError but formats message with args first.
+func (l *BucktLogger) WrapErrorf(message string, err error, args ...any) error {
+	if err == nil {
+		return nil
+	}
+	if len(args) > 0 {
+		message = fmt.Sprintf(message, args...)
+	}
+	return fmt.Errorf("%s: %w", message, err)
+}

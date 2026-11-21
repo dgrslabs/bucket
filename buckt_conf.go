@@ -1,0 +1,581 @@
+package buckt
+
+import (
+	"database/sql"
+	"log"
+	"time"
+
+	"github.com/Rhaqim/buckt/internal/domain"
+	"github.com/Rhaqim/buckt/internal/model"
+	"github.com/Rhaqim/buckt/pkg/events"
+	"github.com/Rhaqim/buckt/pkg/imageproc"
+	"github.com/Rhaqim/buckt/pkg/metrics"
+	"github.com/Rhaqim/buckt/pkg/scan"
+)
+
+type DBDrivers = model.DBDrivers // Type alias
+
+const (
+	// Posstgres represents the Postgres database driver.
+	Postgres = model.Postgres
+	// SQLite represents the SQLite database driver.
+	SQLite = model.SQLite
+)
+
+// DBConfig holds the configuration for the database connection.
+//
+// Fields:
+//
+//	Driver: A string representing the database driver name.
+//	Database: A pointer to an sql.DB instance representing the database connection.
+type DBConfig struct {
+	Driver   DBDrivers
+	Database *sql.DB
+
+	// TablePrefix is prepended to every buckt table name (folder_models,
+	// file_models, the migration ledger, ...). Leave empty (the default) to keep
+	// buckt's historical un-prefixed names — required for existing databases.
+	// Set it (e.g. "buckt_" or "myapp_") for a FRESH database that shares a
+	// schema with other tables. Changing it on an existing database points buckt
+	// at a different, empty set of tables, so pick it once up front; buckt
+	// refuses to start if a prefix is set while legacy un-prefixed tables exist.
+	TablePrefix string
+}
+
+// FileCacheConfig holds the configuration for the file cache.
+// It includes settings for the number of counters, maximum cost,
+// and buffer items.
+//
+// Fields:
+//
+//	NumCounters: The number of counters for the cache.
+//	MaxCost: The maximum cost of the cache.
+//	BufferItems: The number of items in the buffer.
+type FileCacheConfig struct {
+	NumCounters int64
+	MaxCost     int64
+	BufferItems int64
+}
+
+// Validate checks the configuration values for the file cache.
+// It sets default values if the provided values are less than or equal to zero.
+// The default values are:
+//
+//	NumCounters: 1e7 (10 million)
+//	MaxCost: 1 << 30 (1 GB)
+//	BufferItems: 64
+//
+// If the values are already set to valid values, they remain unchanged.
+// This function is useful for ensuring that the cache configuration is valid
+// before using it in the application.
+// It is typically called during the initialization of the cache manager.
+func (f *FileCacheConfig) Validate() {
+	if f.NumCounters <= 0 {
+		f.NumCounters = 1e7 // 10M
+	}
+	if f.MaxCost <= 0 {
+		f.MaxCost = 1 << 30 // 1GB
+	}
+	if f.BufferItems <= 0 {
+		f.BufferItems = 64
+	}
+}
+
+// CacheConfig holds the configuration for the cache manager.
+// It includes the cache manager instance and file cache configuration.
+// Fields:
+//
+//	Manager: The cache manager instance.
+//	FileCacheConfig: The file cache configuration.
+type CacheConfig struct {
+	Manager domain.CacheManager
+	FileCacheConfig
+}
+
+// LogConfig holds the configuration for logging in the application.
+//
+// Fields:
+//
+//	LogFile: A string representing the log file path.
+//	Silence: A boolean flag indicating whether to silence logs.
+//	LogTerminal: A boolean flag indicating whether to log to the terminal.
+//	Logger: A pointer to a log.Logger instance. If nil, a new logger will be created.
+type LogConfig struct {
+	LogFile     string
+	Silence     bool
+	LogTerminal bool
+	Logger      *log.Logger
+}
+
+// Backend represents the file backend interface.
+//
+// It defines methods for interacting with the file storage backend.
+type Backend = domain.FileBackend
+
+// FileInfo represents information about a file.
+type FileInfo = model.FileInfo
+
+// BackendConfig holds the configuration for the file backend.
+//
+// It includes the source and target backends for migration.
+//
+// If only one backend is specified, it is used as the primary backend.
+type BackendConfig struct {
+	// Source is the current backend in use (e.g., local, S3).
+	Source Backend
+
+	// Target is the backup or primary backend to migrate to (e.g., S3, Azure).
+	// If MigrationEnabled is false, this is ignored.
+	Target Backend
+
+	// MigrationEnabled enables dual-write migration mode.
+	MigrationEnabled bool
+
+	// MigrationConcurrency sets how many files MigrateAll copies in parallel.
+	// 0 uses DefaultMigrationConcurrency.
+	MigrationConcurrency int
+}
+
+// LocalBackend is a placeholder and is replaced with the actual local backend implementation.
+//
+// Usecase: Selecting the local backend for migration.
+//
+//	backendConfig := BackendConfig{
+//	 MigrationEnabled: true,
+//		Source: buckt.LocalBackend(),
+//		Target: aws.S3Backend(),
+//	}
+func LocalBackend() Backend {
+	return &domain.PlaceholderBackend{Title: "local"}
+}
+
+// Config represents the configuration options for the Buckt application.
+// It includes settings for logging, media directory, and standalone mode.
+//
+// Fields:
+//
+//	DB: Database configuration.
+//	Cache: Cache configuration.
+//	Log: Configuration for logging.
+//	MediaDir: Path to the directory where media files are stored.
+//	FlatNameSpaces: Flag indicating whether the application should use flat namespaces when storing files.
+//
+// DefaultMaxFileSize is a suggested file-size limit (100MB).
+// It is NOT applied automatically — pass it to WithMaxFileSize to opt in.
+const DefaultMaxFileSize int64 = 100 * 1024 * 1024
+
+// DefaultMaxTrashBatchSize caps the number of descendant files that a single
+// trash/permanent-delete operation may touch. Operations that exceed this
+// limit are refused so a single API call cannot tie up the database
+// transaction or storage backend with thousands of sequential moves.
+const DefaultMaxTrashBatchSize = 5000
+
+// DefaultBackendOpTimeout bounds the total time a single delete operation
+// may spend on backend I/O. The DB transaction is held open for the duration,
+// so this also bounds the worst-case lock-contention window.
+const DefaultBackendOpTimeout = 5 * time.Minute
+
+// DefaultMigrationConcurrency is how many files MigrateAll copies in parallel
+// when MigrationConfig.Concurrency is left at 0. Chosen to overlap network
+// latency to a cloud target without hammering it or buffering too many files
+// in memory at once.
+const DefaultMigrationConcurrency = 8
+
+type Config struct {
+	MediaDir       string
+	FlatNameSpaces bool
+	MaxFileSize    int64
+
+	// Dedup, when true, collapses identical uploads within the same folder:
+	// if a file with the same content hash already exists under the target
+	// folder for the owner, UploadFile returns that existing file's ID instead
+	// of storing the bytes again. Off by default. See WithDedup.
+	Dedup bool
+
+	// MaxTrashBatchSize caps the number of descendant files in a single
+	// folder delete. Defaults to DefaultMaxTrashBatchSize when zero.
+	MaxTrashBatchSize int
+
+	// BackendOpTimeout bounds backend I/O time during a delete operation.
+	// Defaults to DefaultBackendOpTimeout when zero. Set to a negative value
+	// to disable.
+	BackendOpTimeout time.Duration
+
+	DB      DBConfig
+	Cache   CacheConfig
+	Log     LogConfig
+	Backend BackendConfig
+
+	// Metrics, when non-nil, receives one record per storage-backend operation
+	// (put/get/list/...) for every backend. Use metrics.NewCollector for a
+	// built-in in-memory sink. Nil (the default) disables metrics with zero
+	// overhead.
+	Metrics metrics.Recorder
+
+	// EventHandlers receive a lifecycle events.Event after each successful file
+	// operation (upload/trash/restore/purge). Register them with
+	// WithEventHandler. Handlers run synchronously post-operation — keep them
+	// fast (enqueue and return). Empty (the default) means zero overhead.
+	EventHandlers []events.Handler
+
+	// Scanner, when non-nil, inspects every upload's bytes before they are
+	// committed to the backend and can reject the file (malware, disallowed
+	// type). buckt ships no scanner engine — supply one (ClamAV, VirusTotal, a
+	// content-type allowlist, …) via WithUploadScanner. A rejection surfaces as
+	// ErrUploadRejected and nothing is stored. Nil (the default) disables
+	// scanning with zero overhead.
+	Scanner scan.Scanner
+
+	// ExpirySweepInterval, when > 0, starts a background ticker that calls
+	// PurgeExpired on this interval to delete files past their ExpiresAt. 0 (the
+	// default) leaves expiry app-driven — set file expiries and call PurgeExpired
+	// from your own scheduler. Configure with WithExpirySweeper.
+	ExpirySweepInterval time.Duration
+
+	// PresignCacheControl, when set, is the Cache-Control header presigned GET
+	// URLs (PresignedURL) are served with on backends that support response
+	// overrides (S3/R2). Empty (the default) uses "private, max-age=<ttl>".
+	// Configure with WithPresignCacheControl.
+	PresignCacheControl string
+
+	// Derivatives defines the resized image variants GenerateDerivatives will
+	// produce. Empty (the default) disables the feature. Configure with
+	// WithImageDerivatives.
+	Derivatives []DerivativeSpec
+
+	// ImageProcessor resizes/encodes images for GenerateDerivatives. Nil (the
+	// default) uses the built-in pure-Go JPEG/PNG processor. Set it (via
+	// WithImageProcessor) to add formats like WebP.
+	ImageProcessor imageproc.Processor
+}
+
+// DerivativeSpec describes one resized image variant (e.g. a thumbnail). The
+// image is scaled to at most MaxWidth pixels wide, preserving aspect ratio and
+// never upscaling.
+type DerivativeSpec struct {
+	Name     string // variant name, e.g. "thumbnail" — used to fetch it back
+	MaxWidth uint   // maximum width in pixels
+	// Format is the output encoding: "" keeps the source format; "jpeg" and
+	// "png" are handled by the built-in processor; other values (e.g. "webp")
+	// require a matching ImageProcessor.
+	Format string
+}
+
+// ConfigFunc is a function type that takes a pointer to Config and modifies it.
+type ConfigFunc func(*Config)
+
+// WithDB is a configuration function that sets the database connection
+// for the Config. It takes a *sql.DB as an argument and returns
+// a ConfigFunc that assigns the provided database connection to the
+// Config.
+//
+// Parameters:
+//   - driver: A string representing the database driver name.
+//   - db: A pointer to an sql.DB instance representing the database connection.
+//
+// Returns:
+//   - ConfigFunc: A function that takes a pointer to Config and sets its DB field.
+func WithDB(driver DBDrivers, db *sql.DB) ConfigFunc {
+	return func(c *Config) {
+		c.DB.Driver = DBDrivers(driver)
+		c.DB.Database = db
+	}
+}
+
+// WithTablePrefix sets a prefix applied to every buckt table name. Use it only
+// for a FRESH database that must share a schema with other tables; the default
+// empty prefix preserves buckt's historical table names, which existing
+// databases depend on. See DBConfig.TablePrefix for the full caveats.
+func WithTablePrefix(prefix string) ConfigFunc {
+	return func(c *Config) {
+		c.DB.TablePrefix = prefix
+	}
+}
+
+// WithCache is a configuration function that sets the cache configuration for the Config.
+// It takes a CacheConfig instance as an argument and assigns it to the Cache field of Config.
+//
+// Parameters:
+//   - cache: An instance of CacheConfig to be used for caching.
+//
+// Returns:
+//   - A ConfigFunc that sets the CacheManager in the Config.
+func WithCache(cache CacheConfig) ConfigFunc {
+	return func(c *Config) {
+		c.Cache = cache
+	}
+}
+
+// WithLog is a configuration function that sets the logger for the Config.
+// It takes a Log instance as an argument and assigns it to the Log field of Config.
+//
+// Parameters:
+//   - log: An instance of Log to be used for logging.
+//
+// Returns:
+//   - A ConfigFunc that sets the Log field of Config.
+func WithLog(log LogConfig) ConfigFunc {
+	return func(c *Config) {
+		c.Log = log
+	}
+}
+
+// MediaDir sets the directory path for media files in the Config.
+// It takes a string parameter mediaDir which specifies the path to the media directory.
+// It returns a ConfigFunc that updates the MediaDir field of Config.
+func MediaDir(mediaDir string) ConfigFunc {
+	return func(c *Config) {
+		c.MediaDir = mediaDir
+	}
+}
+
+// FlatNameSpaces is a configuration function that sets the FlatNameSpaces
+// option in the Config. When the flat parameter is true, it enables
+// flat namespaces; otherwise, it disables them.
+//
+// Parameters:
+//
+//	flat - a boolean value indicating whether to enable or disable flat namespaces.
+//
+// Returns:
+//
+//	A ConfigFunc that applies the flat namespaces setting to a Config.
+func FlatNameSpaces(flat bool) ConfigFunc {
+	return func(c *Config) {
+		c.FlatNameSpaces = flat
+	}
+}
+
+// MigrationConfig describes a dual-write migration between two backends.
+// Files are written to From (source of truth) and mirrored to To. Reads fall
+// back to To if From doesn't have the file, with lazy migration on access.
+type MigrationConfig struct {
+	// From is the current backend in use, treated as the source of truth.
+	From Backend
+
+	// To is the destination backend that From is being migrated to.
+	To Backend
+
+	// Concurrency sets how many files MigrateAll copies in parallel. 0 uses a
+	// sensible default (DefaultMigrationConcurrency). Higher values speed up bulk
+	// migration to a high-latency target (S3/R2) but use more memory — each
+	// in-flight file is buffered in full — and can trip provider rate limits.
+	Concurrency int
+}
+
+// WithBackend configures a single storage backend.
+//
+// For migration scenarios (writing to two backends and gradually moving data),
+// use WithMigration instead.
+//
+// Example:
+//
+//	s3, _ := aws.NewBackend(awsConfig)
+//	client, _ := buckt.Default(buckt.WithBackend(s3))
+func WithBackend(backend Backend) ConfigFunc {
+	return func(c *Config) {
+		c.Backend.Source = backend
+		c.Backend.Target = nil
+		c.Backend.MigrationEnabled = false
+	}
+}
+
+// WithMetrics enables per-operation backend metrics, recorded to r for every
+// backend (local, S3, Azure, GCP, and the migration source/target). Pass a
+// metrics.NewCollector for a built-in in-memory sink you can read with
+// Snapshot(), or your own metrics.Recorder implementation.
+//
+// Example:
+//
+//	m := metrics.NewCollector()
+//	client, _ := buckt.Default(buckt.WithBackend(s3), buckt.WithMetrics(m))
+//	// ... later ...
+//	snap := m.Snapshot() // backend -> operation -> Stat
+func WithMetrics(r metrics.Recorder) ConfigFunc {
+	return func(c *Config) {
+		c.Metrics = r
+	}
+}
+
+// WithImageDerivatives configures the resized image variants that
+// GenerateDerivatives produces (and GetDerivative fetches). Call
+// GenerateDerivatives from a file.uploaded event handler so the CPU-bound
+// resizing runs in your worker, off the upload path. Supports JPEG and PNG.
+//
+//	buckt.WithImageDerivatives(
+//	    buckt.DerivativeSpec{Name: "thumbnail", MaxWidth: 200},
+//	    buckt.DerivativeSpec{Name: "medium", MaxWidth: 800},
+//	)
+func WithImageDerivatives(specs ...DerivativeSpec) ConfigFunc {
+	return func(c *Config) {
+		c.Derivatives = append(c.Derivatives, specs...)
+	}
+}
+
+// WithImageProcessor sets the image processor used by GenerateDerivatives,
+// replacing the built-in JPEG/PNG one. Use it to add formats such as WebP by
+// supplying a processor from a module that imports the encoder — buckt's core
+// stays free of that dependency.
+func WithImageProcessor(p imageproc.Processor) ConfigFunc {
+	return func(c *Config) {
+		c.ImageProcessor = p
+	}
+}
+
+// WithDedup enables content deduplication: an upload whose bytes hash-match a
+// file already present in the same target folder (for the same owner) returns
+// that existing file's ID and skips re-writing the blob — turning the WhatsApp
+// "same photo sent four times" case into a single stored object. Scoped to the
+// target folder so it composes with nested-namespace mode (where a blob's path
+// reflects its folder) and never resurrects a trashed file. Off by default.
+func WithDedup() ConfigFunc {
+	return func(c *Config) {
+		c.Dedup = true
+	}
+}
+
+// WithEventHandler registers a handler that receives a lifecycle events.Event
+// after each successful file operation. It may be called multiple times to
+// attach several handlers. Handlers run synchronously after the operation
+// completes (outside the DB transaction); keep them fast — the intended use is
+// to enqueue work (AI processing, derivative generation, …) and return. A
+// panicking handler is recovered and never fails the originating call.
+func WithEventHandler(h events.Handler) ConfigFunc {
+	return func(c *Config) {
+		if h != nil {
+			c.EventHandlers = append(c.EventHandlers, h)
+		}
+	}
+}
+
+// WithUploadScanner registers a scanner that inspects every upload's bytes
+// before they are committed to the storage backend. If the scanner returns an
+// error, the upload is rejected: no blob is written, the metadata row is rolled
+// back, and no file.uploaded event fires. The rejection is returned as
+// ErrUploadRejected wrapping the scanner's error, so callers can branch with
+// errors.Is(err, buckt.ErrUploadRejected) while still reading the reason.
+//
+// buckt ships no scanning engine — the scanner is where you plug in ClamAV, a
+// VirusTotal lookup, a magic-byte/content-type allowlist, etc. The scanner runs
+// synchronously on the upload path and is shared across concurrent uploads, so
+// it must be safe for concurrent use and reasonably fast (or internally queued).
+//
+// Example:
+//
+//	client, _ := buckt.Default(buckt.WithUploadScanner(
+//		scan.ScannerFunc(func(ctx context.Context, name string, data []byte) error {
+//			return clamav.Scan(ctx, data) // your engine
+//		}),
+//	))
+func WithUploadScanner(s scan.Scanner) ConfigFunc {
+	return func(c *Config) {
+		c.Scanner = s
+	}
+}
+
+// WithExpirySweeper runs a background goroutine that calls PurgeExpired every
+// interval, permanently deleting files whose expiry (see SetFileExpiry /
+// SetFileTTL) has passed. The sweeper is stopped by Client.Close.
+//
+// This is a convenience for single-instance deployments. Leave it unset (and
+// call PurgeExpired from your own cron/worker) when you'd rather control the
+// cadence yourself or run one sweeper across a multi-instance deployment. A
+// non-positive interval disables it (the default).
+func WithExpirySweeper(interval time.Duration) ConfigFunc {
+	return func(c *Config) {
+		c.ExpirySweepInterval = interval
+	}
+}
+
+// WithPresignCacheControl sets the Cache-Control header served with presigned
+// download URLs (see Client.PresignedURL), e.g. "public, max-age=86400". By
+// default it is "private, max-age=<ttl>", matching the URL's lifetime.
+func WithPresignCacheControl(value string) ConfigFunc {
+	return func(c *Config) {
+		c.PresignCacheControl = value
+	}
+}
+
+// WithMigration configures dual-write migration between two backends.
+// Writes go to both backends (with From as the source of truth); reads fall
+// back to To if From is missing the file. Use this when migrating from one
+// storage backend to another.
+//
+// Example:
+//
+//	s3, _ := aws.NewBackend(awsConfig)
+//	client, _ := buckt.Default(buckt.WithMigration(buckt.MigrationConfig{
+//		From: buckt.LocalBackend(),
+//		To:   s3,
+//	}))
+func WithMigration(mc MigrationConfig) ConfigFunc {
+	return func(c *Config) {
+		c.Backend.Source = mc.From
+		c.Backend.Target = mc.To
+		c.Backend.MigrationEnabled = true
+		c.Backend.MigrationConcurrency = mc.Concurrency
+	}
+}
+
+// RegisterPrimaryBackend registers the primary backend for the Buckt application.
+//
+// Deprecated: Use WithBackend instead.
+func RegisterPrimaryBackend(backend Backend) ConfigFunc {
+	return func(c *Config) {
+		c.Backend.Source = backend
+	}
+}
+
+// RegisterSecondaryBackend registers the secondary backend for the Buckt application.
+//
+// Deprecated: Use WithMigration instead, which bundles the source, target, and
+// migration enable flag into a single call.
+func RegisterSecondaryBackend(backend Backend) ConfigFunc {
+	return func(c *Config) {
+		c.Backend.Target = backend
+	}
+}
+
+// EnableMigration enables dual-write migration mode in the Buckt application.
+//
+// Deprecated: Use WithMigration instead, which bundles the source, target, and
+// migration enable flag into a single call.
+func EnableMigration() ConfigFunc {
+	return func(c *Config) {
+		c.Backend.MigrationEnabled = true
+	}
+}
+
+// WithMaxTrashBatchSize sets the maximum number of descendant files a
+// single folder delete may touch. Operations exceeding this limit are
+// refused. Pass 0 to use DefaultMaxTrashBatchSize.
+func WithMaxTrashBatchSize(n int) ConfigFunc {
+	return func(c *Config) {
+		c.MaxTrashBatchSize = n
+	}
+}
+
+// WithBackendOpTimeout sets the maximum time a delete operation may spend
+// on backend I/O. Pass 0 to use DefaultBackendOpTimeout. Pass a negative
+// duration to disable the timeout.
+func WithBackendOpTimeout(d time.Duration) ConfigFunc {
+	return func(c *Config) {
+		c.BackendOpTimeout = d
+	}
+}
+
+// WithMaxFileSize sets the maximum allowed file size in bytes.
+//
+// If unset or set to 0, no limit is enforced (backward-compatible default).
+// The DefaultMaxFileSize constant (100MB) is provided as a sensible value
+// to pass when you want a limit.
+//
+// Example:
+//
+//	buckt.WithMaxFileSize(buckt.DefaultMaxFileSize) // 100MB
+//	buckt.WithMaxFileSize(50 * 1024 * 1024)         // 50MB
+func WithMaxFileSize(size int64) ConfigFunc {
+	return func(c *Config) {
+		c.MaxFileSize = size
+	}
+}

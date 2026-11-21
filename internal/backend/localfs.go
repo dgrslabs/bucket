@@ -1,0 +1,360 @@
+package backend
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"io/fs"
+	"mime"
+	"os"
+	"path/filepath"
+	"strings"
+	"syscall"
+
+	"github.com/Rhaqim/buckt/internal/domain"
+	"github.com/Rhaqim/buckt/internal/model"
+	"github.com/Rhaqim/buckt/pkg/buckterr"
+	"golang.org/x/sync/singleflight"
+)
+
+// ErrPathTraversal wraps the public buckterr.ErrPathTraversal sentinel so
+// callers can errors.Is against it while keeping this package-level variable for
+// existing internal references.
+var ErrPathTraversal = fmt.Errorf("path escapes media directory: %w", buckterr.ErrPathTraversal)
+
+type LocalFileSystemService struct {
+	logger   domain.BucktLogger
+	mediaDir string
+	g        singleflight.Group
+	cache    domain.LRUCache
+}
+
+func NewLocalFileSystemService(logger domain.BucktLogger, mediaDir string, cache domain.LRUCache) domain.FileBackend {
+	logger.Info("🚀 Initialising local file system backend")
+	return &LocalFileSystemService{
+		logger:   logger,
+		mediaDir: mediaDir,
+		g:        singleflight.Group{},
+		cache:    cache,
+	}
+}
+
+func (bfs *LocalFileSystemService) Name() string {
+	return "local"
+}
+
+func (bfs *LocalFileSystemService) resolve(path string) (string, error) {
+	// Strip leading slashes to make the path relative, then clean
+	cleaned := filepath.Clean(strings.TrimLeft(path, "/\\"))
+
+	// Reject paths that escape upward after cleaning
+	if cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(os.PathSeparator)) {
+		return "", ErrPathTraversal
+	}
+
+	full := filepath.Join(bfs.mediaDir, cleaned)
+
+	// Final safety check: ensure the resolved path is under mediaDir
+	cleanBase := filepath.Clean(bfs.mediaDir) + string(os.PathSeparator)
+	if !strings.HasPrefix(filepath.Clean(full)+string(os.PathSeparator), cleanBase) {
+		return "", ErrPathTraversal
+	}
+
+	return full, nil
+}
+
+// Put writes/overwrites a file.
+func (bfs *LocalFileSystemService) Put(ctx context.Context, path string, data []byte) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	filePath, err := bfs.resolve(path)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+		return bfs.logger.WrapError("failed to create directory", err)
+	}
+
+	tmpPath := filePath + ".tmp"
+	f, err := os.Create(tmpPath)
+	if err != nil {
+		return bfs.logger.WrapError("failed to create temp file", err)
+	}
+
+	if _, err = f.Write(data); err != nil {
+		_ = f.Close()
+		_ = os.Remove(tmpPath)
+		return bfs.logger.WrapError("failed to write data", err)
+	}
+
+	if err = f.Sync(); err != nil {
+		_ = f.Close()
+		_ = os.Remove(tmpPath)
+		return bfs.logger.WrapError("failed to fsync temp file", err)
+	}
+
+	if err = f.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return bfs.logger.WrapError("failed to close temp file", err)
+	}
+
+	if err = os.Rename(tmpPath, filePath); err != nil {
+		_ = os.Remove(tmpPath)
+		return bfs.logger.WrapError("failed to rename temp file", err)
+	}
+
+	return nil
+}
+
+// Get reads the entire file into memory.
+func (bfs *LocalFileSystemService) Get(ctx context.Context, path string) ([]byte, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
+	filePath, err := bfs.resolve(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// check cache first
+	if data, ok := bfs.cache.Get(filePath); ok {
+		return data, nil
+	}
+
+	result, err, _ := bfs.g.Do(filePath, func() (any, error) {
+		return os.ReadFile(filePath)
+	})
+	if err != nil {
+		return nil, bfs.logger.WrapError("failed to read file", err)
+	}
+
+	bytes, ok := result.([]byte)
+	if !ok {
+		return nil, bfs.logger.WrapError("unexpected cache type", fmt.Errorf("expected []byte"))
+	}
+
+	bfs.cache.Add(filePath, bytes)
+	return bytes, nil
+}
+
+// List lists files with the given prefix.
+func (bfs *LocalFileSystemService) List(ctx context.Context, prefix string) ([]string, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
+	dirPath, err := bfs.resolve(prefix)
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+
+	err = filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			if isOSJunk(d.Name()) {
+				return nil
+			}
+			relPath, err := filepath.Rel(bfs.mediaDir, path)
+			if err != nil {
+				return err
+			}
+			files = append(files, relPath)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, bfs.logger.WrapError("failed to list files", err)
+	}
+
+	return files, nil
+}
+
+// isOSJunk reports whether name is a file the OS or a file manager drops into
+// directories on its own (Finder metadata, AppleDouble forks, Windows thumbnail
+// caches). They are never buckt uploads, so List skips them — otherwise a bulk
+// local -> cloud migration copies and counts them. Deliberately a narrow
+// denylist: dot-named files in general are valid uploads and must still list.
+func isOSJunk(name string) bool {
+	switch name {
+	case ".DS_Store", "Thumbs.db", "desktop.ini":
+		return true
+	}
+	return strings.HasPrefix(name, "._")
+}
+
+// Stream returns a file stream (caller must Close).
+func (bfs *LocalFileSystemService) Stream(ctx context.Context, path string) (io.ReadCloser, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
+	filePath, err := bfs.resolve(path)
+	if err != nil {
+		return nil, err
+	}
+	return os.Open(filePath)
+}
+
+// Delete removes a file.
+func (bfs *LocalFileSystemService) Delete(ctx context.Context, path string) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	filePath, err := bfs.resolve(path)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(filePath); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return bfs.logger.WrapError("failed to delete file", err)
+	}
+
+	return nil
+}
+
+// Exists checks if a file exists.
+func (bfs *LocalFileSystemService) Exists(ctx context.Context, path string) (bool, error) {
+	select {
+	case <-ctx.Done():
+		return false, ctx.Err()
+	default:
+	}
+
+	filePath, err := bfs.resolve(path)
+	if err != nil {
+		return false, err
+	}
+	_, err = os.Stat(filePath)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, bfs.logger.WrapError("failed to stat file", err)
+}
+
+// Stat returns metadata.
+func (bfs *LocalFileSystemService) Stat(ctx context.Context, path string) (*model.FileInfo, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
+	filePath, err := bfs.resolve(path)
+	if err != nil {
+		return nil, err
+	}
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return nil, bfs.logger.WrapError("failed to stat file", err)
+	}
+
+	contentType := mime.TypeByExtension(filepath.Ext(path))
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	return &model.FileInfo{
+		Size:         info.Size(),
+		LastModified: info.ModTime(),
+		ETag:         "", // Not applicable locally
+		ContentType:  contentType,
+	}, nil
+}
+
+func (bfs *LocalFileSystemService) DeleteFolder(ctx context.Context, path string) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	dirPath, err := bfs.resolve(path)
+	if err != nil {
+		return err
+	}
+	return os.RemoveAll(dirPath)
+}
+
+func (bfs *LocalFileSystemService) Move(ctx context.Context, oldPath, newPath string) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	oldFilePath, err := bfs.resolve(oldPath)
+	if err != nil {
+		return err
+	}
+	newFilePath, err := bfs.resolve(newPath)
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(oldFilePath); errors.Is(err, fs.ErrNotExist) {
+		return bfs.logger.WrapError("source file does not exist", err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(newFilePath), 0755); err != nil {
+		return bfs.logger.WrapError("failed to create directory", err)
+	}
+
+	if err := os.Rename(oldFilePath, newFilePath); err != nil {
+		var linkErr *os.LinkError
+		if errors.As(err, &linkErr) && linkErr.Err == syscall.EXDEV {
+			// cross-device move fallback: copy then delete
+			if copyErr := copyFile(oldFilePath, newFilePath); copyErr != nil {
+				return bfs.logger.WrapError("cross-device copy failed", copyErr)
+			}
+			if delErr := os.Remove(oldFilePath); delErr != nil {
+				return bfs.logger.WrapError("failed to remove old file after cross-device move", delErr)
+			}
+			return nil
+		}
+		return bfs.logger.WrapError("failed to move file", err)
+	}
+	return nil
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = in.Close() }()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = out.Close() }()
+
+	if _, err = io.Copy(out, in); err != nil {
+		_ = os.Remove(dst)
+		return err
+	}
+	if err = out.Sync(); err != nil {
+		_ = os.Remove(dst)
+		return err
+	}
+	return nil
+}

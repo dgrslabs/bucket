@@ -1,0 +1,115 @@
+package mocks
+
+import (
+	"context"
+
+	"github.com/Rhaqim/buckt/internal/domain"
+	"github.com/Rhaqim/buckt/internal/model"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
+)
+
+// FolderRepository is a mock implementation of the FolderRepository interface
+type FolderRepository struct {
+	mock.Mock
+}
+
+func NewFolderRepository() domain.FolderRepository {
+	return &FolderRepository{}
+}
+
+// GetRootFolder implements domain.FolderRepository.
+func (m *FolderRepository) GetRootFolder(ctx context.Context, user_id string) (*model.FolderModel, error) {
+	args := m.Called(user_id)
+	return args.Get(0).(*model.FolderModel), args.Error(1)
+}
+
+// GetTrashFolder implements domain.FolderRepository.
+func (m *FolderRepository) GetTrashFolder(ctx context.Context, user_id string) (*model.FolderModel, error) {
+	args := m.Called(user_id)
+	return args.Get(0).(*model.FolderModel), args.Error(1)
+}
+
+func (m *FolderRepository) Create(ctx context.Context, folder *model.FolderModel) (string, error) {
+	args := m.Called(folder)
+	return args.Get(0).(string), args.Error(1)
+}
+
+func (m *FolderRepository) GetFolder(ctx context.Context, id uuid.UUID) (*model.FolderModel, error) {
+	args := m.Called(id)
+	return args.Get(0).(*model.FolderModel), args.Error(1)
+}
+
+func (m *FolderRepository) GetFolders(ctx context.Context, parentID uuid.UUID) ([]model.FolderModel, error) {
+	args := m.Called(parentID)
+	return args.Get(0).([]model.FolderModel), args.Error(1)
+}
+
+func (m *FolderRepository) GetFoldersPaginated(ctx context.Context, parentID uuid.UUID, page model.Pagination) ([]model.FolderModel, error) {
+	args := m.Called(parentID, page)
+	return args.Get(0).([]model.FolderModel), args.Error(1)
+}
+
+func (m *FolderRepository) MoveFolder(ctx context.Context, folderID, newParentID uuid.UUID) error {
+	args := m.Called(folderID, newParentID)
+	return args.Error(0)
+}
+
+func (m *FolderRepository) RenameFolder(ctx context.Context, user_id string, folderID uuid.UUID, newName string) error {
+	args := m.Called(user_id, folderID, newName)
+	return args.Error(0)
+}
+
+// DeleteFolder implements domain.FolderRepository.
+func (m *FolderRepository) DeleteFolder(ctx context.Context, folder_id uuid.UUID, beforeCommit func(oldPath, newPath string, fileMoves []model.PathMove) error) (parent_id, oldPath, newPath string, fileMoves []model.PathMove, err error) {
+	args := m.Called(folder_id)
+	parent_id = args.String(0)
+	oldPath = args.String(1)
+	newPath = args.String(2)
+	if v := args.Get(3); v != nil {
+		fileMoves, _ = v.([]model.PathMove)
+	}
+	repoErr := args.Error(4)
+
+	// Mirror the real repository: the callback only fires after the DB
+	// updates succeed. If the mocked call is configured to return an
+	// error, treat it as a pre-callback failure and skip the callback.
+	if repoErr != nil {
+		return parent_id, "", "", nil, repoErr
+	}
+
+	if beforeCommit != nil {
+		if cbErr := beforeCommit(oldPath, newPath, fileMoves); cbErr != nil {
+			return parent_id, "", "", nil, cbErr
+		}
+	}
+	return
+}
+
+// RestoreFolder implements domain.FolderRepository.
+func (m *FolderRepository) RestoreFolder(ctx context.Context, folder_id, target uuid.UUID, beforeCommit func(oldPath, newPath string, fileMoves []model.PathMove) error) (oldPath, newPath string, fileMoves []model.PathMove, err error) {
+	args := m.Called(folder_id, target)
+	oldPath = args.String(0)
+	newPath = args.String(1)
+	if v := args.Get(2); v != nil {
+		fileMoves, _ = v.([]model.PathMove)
+	}
+	repoErr := args.Error(3)
+
+	if repoErr != nil {
+		return "", "", nil, repoErr
+	}
+
+	if beforeCommit != nil {
+		if cbErr := beforeCommit(oldPath, newPath, fileMoves); cbErr != nil {
+			return "", "", nil, cbErr
+		}
+	}
+	return
+}
+
+// ScrubFolder implements domain.FolderRepository.
+func (m *FolderRepository) ScrubFolder(ctx context.Context, user_id string, folder_id uuid.UUID) (parent_id string, err error) {
+	args := m.Called(user_id, folder_id)
+	return args.String(0), args.Error(1)
+}

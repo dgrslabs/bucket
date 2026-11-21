@@ -1,0 +1,70 @@
+package web
+
+import (
+	"embed"
+	"fmt"
+	"html/template"
+	"io/fs"
+	"strings"
+)
+
+// formatSize formats a file size in bytes to a human-readable string.
+func formatSize(size int64) string {
+	const (
+		KB = 1024
+		MB = KB * 1024
+		GB = MB * 1024
+	)
+	switch {
+	case size >= GB:
+		return fmt.Sprintf("%.1f GB", float64(size)/float64(GB))
+	case size >= MB:
+		return fmt.Sprintf("%.1f MB", float64(size)/float64(MB))
+	case size >= KB:
+		return fmt.Sprintf("%.1f KB", float64(size)/float64(KB))
+	default:
+		return fmt.Sprintf("%d B", size)
+	}
+}
+
+//go:embed templates/*.html
+var templatesFS embed.FS
+
+// loadTemplates loads and parses HTML templates from the embedded filesystem.
+// It returns a parsed template or an error if the templates could not be loaded or parsed.
+//
+// The function first attempts to create a sub-filesystem from the embedded filesystem
+// rooted at "internal/web/templates". If this operation fails, it returns an error
+// indicating the failure to load templates.
+//
+// If the sub-filesystem is successfully created, the function then attempts to parse
+// all HTML files within this sub-filesystem. If parsing fails, it returns an error
+// indicating the failure to parse templates.
+//
+// Returns:
+// - *template.Template: The parsed templates.
+// - error: An error if the templates could not be loaded or parsed.
+func loadTemplates() (*template.Template, error) {
+	tmplFS, err := fs.Sub(templatesFS, "templates")
+	if err != nil {
+		return nil, fmt.Errorf("failed to load templates: %w", err)
+	}
+
+	// Add custom functions to the template
+	tmpl := template.New("").Funcs(template.FuncMap{
+		"hasPrefix":  hasPrefix,
+		"formatSize": formatSize,
+	})
+
+	tmpl, err = tmpl.ParseFS(tmplFS, "*.html")
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse templates: %w", err)
+	}
+
+	return tmpl, nil
+}
+
+// Function to check if a string has a prefix
+func hasPrefix(s, prefix string) bool {
+	return strings.HasPrefix(s, prefix)
+}

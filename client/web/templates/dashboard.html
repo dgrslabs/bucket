@@ -1,0 +1,312 @@
+{{ template "base" . }}
+
+{{ define "toolbar" }}
+<nav class="flex items-center gap-1.5 text-sm min-w-0 overflow-x-auto no-scrollbar" aria-label="Breadcrumb">
+	<a href="/web/" class="shrink-0 inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline">
+		<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h3v-6h6v6h3a1 1 0 001-1V10"/></svg>
+		<span class="hidden sm:inline">Home</span>
+	</a>
+	{{ if .IsTrash }}
+		<span class="text-slate-300 dark:text-slate-600">/</span>
+		<span class="font-medium">Trash</span>
+	{{ else }}
+		{{ if .ParentID }}
+			<span class="text-slate-300 dark:text-slate-600">/</span>
+			<a href="/web/folder/{{ .ParentID }}" class="shrink-0 text-blue-600 dark:text-blue-400 hover:underline">Up</a>
+		{{ end }}
+		<span class="text-slate-300 dark:text-slate-600">/</span>
+		<span class="font-medium truncate">{{ .Name }}</span>
+	{{ end }}
+</nav>
+{{ end }}
+
+{{ define "body" }}
+{{ if .IsTrash }}{{ template "trashcontent" . }}{{ else }}
+<div>
+	<!-- Actions row -->
+	<div class="flex items-center justify-between gap-3 mb-5">
+		<div class="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-800 p-0.5">
+			<button type="button" id="btn-grid" onclick="setView('grid')" class="p-1.5 rounded-md" title="Grid view" aria-label="Grid view">
+				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5h6v6H4zM14 5h6v6h-6zM4 15h6v4H4zM14 13h6v6h-6z"/></svg>
+			</button>
+			<button type="button" id="btn-list" onclick="setView('list')" class="p-1.5 rounded-md" title="List view" aria-label="List view">
+				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+			</button>
+		</div>
+		<div class="flex items-center gap-2">
+			<button onclick="openModal('new-folder')" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
+				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+				<span class="hidden sm:inline">New Folder</span>
+			</button>
+			<button onclick="openModal('upload-files')" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+				<span class="hidden sm:inline">Upload</span>
+			</button>
+		</div>
+	</div>
+
+	<!-- Content -->
+	<div id="file-list">
+		{{ if and (not .Folders) (not .Files) }}
+			<div class="text-center py-20 text-slate-400">
+				<svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+				<p class="text-lg font-medium text-slate-500 dark:text-slate-400">This folder is empty</p>
+				<p class="text-sm mt-1">Create a folder or upload files to get started</p>
+			</div>
+		{{ else }}
+			{{ if .Folders }}
+			<section class="mb-7">
+				<h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Folders</h3>
+				<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">{{ template "folders" .Folders }}</div>
+			</section>
+			{{ end }}
+			{{ if .Files }}
+			<section>
+				<h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Files</h3>
+				<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">{{ template "files" .Files }}</div>
+			</section>
+			{{ end }}
+		{{ end }}
+	</div>
+
+	<!-- Modal -->
+	<div id="modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50 backdrop-blur-sm p-4" onclick="if(event.target===this)closeModal()">
+		<div class="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 rounded-xl shadow-xl w-full max-w-md" id="modal-content" onclick="event.stopPropagation()"></div>
+	</div>
+
+	<!-- Image preview: shows the larger 'medium' derivative, with a link to the full original. -->
+	<div id="preview" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[60] p-4" onclick="if(event.target===this)closePreview()">
+		<figure class="flex flex-col items-center gap-3 max-w-full max-h-full">
+			<img id="preview-img" src="" alt="" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl" />
+			<figcaption class="flex items-center gap-4 text-sm text-slate-200">
+				<span id="preview-name" class="truncate max-w-[60vw]"></span>
+				<a id="preview-full" href="#" target="_blank" rel="noopener" class="text-blue-300 hover:underline">View full size</a>
+			</figcaption>
+		</figure>
+	</div>
+
+	<!-- Transient status toast -->
+	<div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 hidden px-4 py-2 rounded-lg bg-slate-900 text-white text-sm shadow-lg z-[70]"></div>
+</div>
+
+<script>
+	const CURRENT_FOLDER_ID = "{{ .ID }}";
+	const IN = 'w-full px-3 py-2 rounded-lg outline-none bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent';
+	const BTN_CANCEL = 'px-4 py-2 text-sm font-medium rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700';
+	const BTN_OK = 'px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700';
+
+	/* View toggle (grid / list), persisted. */
+	function setView(v) {
+		const list = document.getElementById("file-list");
+		list.classList.toggle("view-list", v === "list");
+		const active = "bg-slate-100 dark:bg-slate-700 text-blue-600 dark:text-blue-400";
+		document.getElementById("btn-grid").className = "p-1.5 rounded-md " + (v === "grid" ? active : "text-slate-500");
+		document.getElementById("btn-list").className = "p-1.5 rounded-md " + (v === "list" ? active : "text-slate-500");
+		try { localStorage.setItem("buckt-view", v); } catch (e) {}
+	}
+	setView((function () { try { return localStorage.getItem("buckt-view") || "grid"; } catch (e) { return "grid"; } })());
+
+	function openModal(type) {
+		const mc = document.getElementById("modal-content");
+		if (type === "new-folder") {
+			mc.innerHTML = `
+				<div class="p-6">
+					<h3 class="text-lg font-semibold mb-4">Create new folder</h3>
+					<form method="post" action="/web/new-folder">
+						<div class="mb-4">
+							<label class="block text-sm font-medium mb-1">Name</label>
+							<input type="text" name="name" class="${IN}" placeholder="Folder name" required autofocus>
+						</div>
+						<div class="mb-4">
+							<label class="block text-sm font-medium mb-1">Description (optional)</label>
+							<input type="text" name="description" class="${IN}" placeholder="Description">
+						</div>
+						<input type="hidden" name="parent_id" value="${CURRENT_FOLDER_ID}">
+						<div class="flex justify-end gap-2">
+							<button type="button" class="${BTN_CANCEL}" onclick="closeModal()">Cancel</button>
+							<button type="submit" class="${BTN_OK}">Create</button>
+						</div>
+					</form>
+				</div>`;
+		} else if (type === "upload-files") {
+			mc.innerHTML = `
+				<div class="p-6">
+					<h3 class="text-lg font-semibold mb-4">Upload files</h3>
+					<form enctype="multipart/form-data" method="post" action="/web/upload">
+						<div class="mb-4">
+							<div class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
+								<input type="file" name="files" multiple class="w-full text-sm" id="file-input">
+								<p class="text-xs text-slate-400 mt-2">Select one or more files</p>
+							</div>
+						</div>
+						<div class="mb-4">
+							<label class="block text-xs font-medium text-slate-500 mb-1">Auto-delete after (temp file)</label>
+							<select name="ttl" class="w-full text-sm rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1.5">
+								<option value="">Never — keep permanently</option>
+								<option value="1h">1 hour</option>
+								<option value="24h">24 hours</option>
+								<option value="168h">7 days</option>
+								<option value="720h">30 days</option>
+							</select>
+						</div>
+						<input type="hidden" name="folder_id" value="${CURRENT_FOLDER_ID}">
+						<div class="flex justify-end gap-2">
+							<button type="button" class="${BTN_CANCEL}" onclick="closeModal()">Cancel</button>
+							<button type="submit" class="${BTN_OK}">Upload</button>
+						</div>
+					</form>
+				</div>`;
+		}
+		showModal();
+	}
+
+	/* Rename / Move built via DOM APIs to avoid XSS from user-controlled names. */
+	function fieldModal(title, action, idField, id, opts) {
+		const mc = document.getElementById("modal-content");
+		mc.innerHTML = "";
+		const wrap = el("div", "p-6");
+		wrap.appendChild(el("h3", "text-lg font-semibold mb-4", title));
+		const form = document.createElement("form");
+		form.method = "post"; form.action = action;
+		const fld = el("div", "mb-4");
+		fld.appendChild(el("label", "block text-sm font-medium mb-1", opts.label));
+		const input = document.createElement("input");
+		input.type = "text"; input.name = opts.name; input.className = IN;
+		input.required = true;
+		if (opts.value != null) input.value = opts.value;
+		if (opts.placeholder) input.placeholder = opts.placeholder;
+		fld.appendChild(input);
+		if (opts.help) fld.appendChild(el("p", "text-xs text-slate-400 mt-1", opts.help));
+		form.appendChild(fld);
+		const hidden = document.createElement("input");
+		hidden.type = "hidden"; hidden.name = idField; hidden.value = id;
+		form.appendChild(hidden);
+		const row = el("div", "flex justify-end gap-2");
+		const cancel = el("button", BTN_CANCEL, "Cancel"); cancel.type = "button"; cancel.onclick = closeModal;
+		const ok = el("button", BTN_OK, opts.submit); ok.type = "submit";
+		row.appendChild(cancel); row.appendChild(ok);
+		form.appendChild(row);
+		wrap.appendChild(form);
+		mc.appendChild(wrap);
+		showModal();
+		input.focus();
+	}
+	function openRenameModal(type, id, currentName) {
+		fieldModal("Rename " + type, type === "folder" ? "/web/rename-folder" : "/web/rename-file",
+			type === "folder" ? "folder_id" : "file_id", id,
+			{ label: "New name", name: "new_name", value: currentName, submit: "Rename" });
+	}
+	function openMoveModal(type, id, name) {
+		fieldModal('Move "' + name + '"', type === "folder" ? "/web/move-folder" : "/web/move-file/" + id,
+			type === "folder" ? "folder_id" : "file_id", id,
+			{ label: "Target folder ID", name: "new_parent_id", placeholder: "Paste folder ID",
+			  help: "Tip: you can also drag an item onto a folder to move it.", submit: "Move" });
+	}
+	function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+	function showModal() { const m = document.getElementById("modal"); m.classList.remove("hidden"); m.classList.add("flex"); }
+	function closeModal() { const m = document.getElementById("modal"); m.classList.add("hidden"); m.classList.remove("flex"); }
+	document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeModal(); closePreview(); } });
+
+	/* Image preview — grid shows the small 'thumbnail' derivative, this pane the
+	   larger 'medium' one, and the caption links to the full-size original. */
+	function openPreview(el) {
+		document.getElementById("preview-img").src = el.dataset.preview;
+		document.getElementById("preview-img").alt = el.dataset.name || "";
+		document.getElementById("preview-name").textContent = el.dataset.name || "";
+		document.getElementById("preview-full").href = el.dataset.full;
+		const p = document.getElementById("preview");
+		p.classList.remove("hidden"); p.classList.add("flex");
+	}
+	function closePreview() { const p = document.getElementById("preview"); p.classList.add("hidden"); p.classList.remove("flex"); }
+
+	let toastTimer;
+	function toast(msg) {
+		const t = document.getElementById("toast");
+		t.textContent = msg;
+		t.classList.remove("hidden");
+		clearTimeout(toastTimer);
+		toastTimer = setTimeout(() => t.classList.add("hidden"), 2500);
+	}
+
+	/* Context menus */
+	function closeAllMenus() {
+		document.querySelectorAll(".context-menu").forEach((el) => el.classList.add("hidden"));
+		document.querySelectorAll(".card.menu-open").forEach((el) => el.classList.remove("menu-open"));
+	}
+	document.addEventListener("click", function (e) {
+		const trigger = e.target.closest(".menu-trigger");
+		if (trigger) {
+			e.preventDefault(); e.stopPropagation();
+			const menu = document.getElementById(trigger.dataset.menu);
+			const wasHidden = menu.classList.contains("hidden");
+			closeAllMenus();
+			if (wasHidden) {
+				menu.classList.remove("hidden");
+				// Raise the card so the (overflowing) menu isn't covered/clipped.
+				const card = trigger.closest(".card");
+				if (card) card.classList.add("menu-open");
+			}
+			return;
+		}
+		if (e.target.closest(".context-menu")) return;
+		closeAllMenus();
+	});
+	document.addEventListener("click", function (e) {
+		const r = e.target.closest(".action-rename");
+		if (r) { const c = document.getElementById((r.dataset.type === "folder" ? "folder-" : "file-") + r.dataset.id); openRenameModal(r.dataset.type, r.dataset.id, c ? c.dataset.name : ""); return; }
+		const mv = e.target.closest(".action-move");
+		if (mv) { const c = document.getElementById((mv.dataset.type === "folder" ? "folder-" : "file-") + mv.dataset.id); openMoveModal(mv.dataset.type, mv.dataset.id, c ? c.dataset.name : ""); return; }
+		const rg = e.target.closest(".action-regenerate");
+		if (rg) { regenerateDerivatives(rg.dataset.id, rg); return; }
+	});
+
+	/* Regenerate an image's derivatives, then cache-bust its thumbnail so the
+	   refreshed variant shows without a full reload. */
+	function regenerateDerivatives(id, btn) {
+		document.querySelectorAll(".context-menu").forEach((el) => el.classList.add("hidden"));
+		if (btn) btn.disabled = true;
+		fetch("/web/regenerate-derivatives/" + encodeURIComponent(id), { method: "POST" })
+			.then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); })
+			.then(() => {
+				const img = document.querySelector("#file-" + CSS.escape(id) + " img");
+				if (img) img.src = img.src.split("?")[0] + "?v=" + Date.now();
+				toast("Previews regenerated");
+			})
+			.catch((err) => toast("Regenerate failed: " + err.message))
+			.finally(() => { if (btn) btn.disabled = false; });
+	}
+
+	/* Drag & drop to move */
+	function allowDrop(e) { e.preventDefault(); }
+	function dragStart(e) {
+		const card = e.target.closest("[data-id]"); if (!card) return;
+		e.dataTransfer.setData("text/plain", JSON.stringify({ id: card.dataset.id, type: card.dataset.type || "folder" }));
+		card.style.opacity = "0.5";
+	}
+	function dragEnd(e) { const c = e.target.closest("[data-id]"); if (c) c.style.opacity = "1"; }
+	function dragEnter(e) { e.preventDefault(); const f = e.target.closest(".folder-card"); if (f) f.classList.add("drag-over"); }
+	function dragLeave(e) { const f = e.target.closest(".folder-card"); if (f) f.classList.remove("drag-over"); }
+	function drop(e) {
+		e.preventDefault();
+		const folder = e.target.closest(".folder-card"); if (!folder) return;
+		folder.classList.remove("drag-over");
+		const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+		const targetId = folder.dataset.id;
+		if (data.id === targetId) return;
+		const form = document.createElement("form");
+		form.method = "POST";
+		if (data.type === "file") {
+			form.action = "/web/move-file/" + encodeURIComponent(data.id);
+			form.appendChild(hiddenInput("new_parent_id", targetId));
+		} else {
+			form.action = "/web/move-folder";
+			form.appendChild(hiddenInput("folder_id", data.id));
+			form.appendChild(hiddenInput("new_parent_id", targetId));
+		}
+		document.body.appendChild(form);
+		form.submit();
+	}
+	function hiddenInput(name, value) { const i = document.createElement("input"); i.type = "hidden"; i.name = name; i.value = value; return i; }
+</script>
+{{ end }}{{ end }}
