@@ -941,6 +941,14 @@ Merges to `main` update a draft GitHub Release via [release-drafter](https://git
 
 ---
 
+## Author
+
+Bucket was created and is maintained by **Anusiem John-Franklin** ([@Rhaqim](https://github.com/Rhaqim)).
+
+It began in 2024 as [`github.com/Rhaqim/buckt`](https://github.com/Rhaqim/buckt), which remains its original home. In November 2026 it was brought to the [dgrslabs](https://github.com/dgrslabs) organization as `github.com/dgrslabs/bucket`, starting at `v1.0.1`.
+
+---
+
 ## License
 
-MIT — see [LICENCE](LICENCE) for details.
+MIT © 2024 Anusiem John-Franklin — see [LICENCE](LICENCE) for details.
