@@ -20,6 +20,8 @@ description = "Non-secret example values and env-var placeholders."
 # Paths that only ever contain placeholders or env lookups, never real secrets.
 paths = [
   '''example/.*''',
+  # Fake GCP service-account JSON used as a test fixture (58-char dummy key).
+  '''internal/mocks/file\.json''',
 ]
 # Obvious placeholder tokens used in docs/examples.
 regexes = [
