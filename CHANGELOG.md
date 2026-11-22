@@ -353,7 +353,7 @@ anyway — the upgrade rewrites schema and relocates trashed rows.
 
 The first `bucket.New(...)` on a v1.4.1 database runs a **versioned, ledger-tracked
 migration runner** (new `internal/database/schema` package, modelled on the
-[loom](https://github.com/Rhaqim/loom) engine's `schema` package). It is safe to
+[loom](https://github.com/Rhaqim/noewright) (now Noewright) engine's `schema` package). It is safe to
 call on every startup — applied migrations are recorded in a
 `bucket_schema_migrations` ledger and never re-run.
 
