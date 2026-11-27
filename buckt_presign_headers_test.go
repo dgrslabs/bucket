@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dgrslabs/bucket/pkg/metrics"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -122,6 +123,39 @@ func TestPresignedURL_FallbackWithoutHeaderSupport(t *testing.T) {
 			url, err := c.PresignedURL(id, time.Minute)
 			require.NoError(t, err)
 			assert.Contains(t, url, "memget://")
+		})
+	}
+}
+
+// TestPresignedURL_DoesNotDownload: signing a URL needs only the file's record,
+// so the object is never read from the backend (on S3/R2 that read is a full
+// download of the file the browser is about to fetch itself). An unknown file
+// still fails with ErrNotFound.
+func TestPresignedURL_DoesNotDownload(t *testing.T) {
+	cases := []struct {
+		name  string
+		build func(t *testing.T) (*Client, *memBackend)
+	}{
+		{"plain presign", presignClient},
+		{"header presign", func(t *testing.T) (*Client, *memBackend) {
+			c, be := headerPresignClient(t)
+			return c, be.memBackend
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c, be := tc.build(t)
+			id, err := c.UploadFile("u1", "", "tile.png", "image/png", []byte("\x89PNG\r\n\x1a\n"))
+			require.NoError(t, err)
+			before := be.getCalls()
+
+			url, err := c.PresignedURL(id, time.Minute)
+			require.NoError(t, err)
+			assert.NotEmpty(t, url)
+			assert.Equal(t, before, be.getCalls(), "presigning must not download the object")
+
+			_, err = c.PresignedURL(uuid.NewString(), time.Minute)
+			assert.ErrorIs(t, err, ErrNotFound, "an unknown file is not signed")
 		})
 	}
 }

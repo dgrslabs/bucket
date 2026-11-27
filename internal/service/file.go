@@ -217,6 +217,26 @@ func (f *FileService) createFile(ctx context.Context, user_id, parent_id, file_n
 // GetFile implements domain.FileService.
 // Subtle: this method shadows the method (FileRepository).GetFile of FileService.repo.
 func (f *FileService) GetFile(ctx context.Context, file_id string) (*model.FileModel, error) {
+	file, err := f.GetFileRecord(ctx, file_id)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := f.fileBackend.Get(ctx, file.Path)
+	if err != nil {
+		return nil, f.logger.WrapError("failed to get file data", err)
+	}
+
+	file.Data = data
+
+	return file, nil
+}
+
+// GetFileRecord implements domain.FileService. It returns the file's record
+// (path, name, content type, size) from the cache or the database and never
+// reads the bytes from the storage backend, so Data is empty. Use it when only
+// the record is needed: on S3/R2 reading the bytes is a full object download.
+func (f *FileService) GetFileRecord(ctx context.Context, file_id string) (*model.FileModel, error) {
 	fileID, err := uuid.Parse(file_id)
 	if err != nil {
 		return nil, fmt.Errorf("invalid id: %w", bucketerr.ErrInvalidID)
@@ -255,13 +275,6 @@ func (f *FileService) GetFile(ctx context.Context, file_id string) (*model.FileM
 			_ = f.cache.SetBucketValue(ctx, file_id, string(jsonData))
 		}
 	}
-
-	data, err := f.fileBackend.Get(ctx, file.Path)
-	if err != nil {
-		return nil, f.logger.WrapError("failed to get file data", err)
-	}
-
-	file.Data = data
 
 	return file, nil
 }

@@ -43,6 +43,17 @@ func (m *FileService) GetFile(ctx context.Context, file_id string) (*model.FileM
 	return args.Get(0).(*model.FileModel), args.Error(1)
 }
 
+// GetFileRecord implements domain.FileService.
+func (m *FileService) GetFileRecord(ctx context.Context, file_id string) (*model.FileModel, error) {
+	args := m.Called(file_id)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).(*model.FileModel), args.Error(1)
+}
+
 func (m *FileService) GetFileStream(ctx context.Context, file_id string) (*model.FileModel, io.ReadCloser, error) {
 	args := m.Called(file_id)
 
