@@ -1182,7 +1182,11 @@ func (b *Client) PresignedURLContext(ctx context.Context, file_id string, ttl ti
 	if !ok {
 		return "", fmt.Errorf("backend %q does not support presigned URLs: %w", b.backend.Name(), ErrUnsupported)
 	}
-	file, err := b.fileService.GetFile(ctx, file_id)
+	// Only the record is needed (path, type, name). GetFile would also read the
+	// bytes, which on S3/R2 downloads the whole object just to sign a URL the
+	// browser then downloads again. A record whose object is missing still
+	// signs; the storage URL answers 404 itself.
+	file, err := b.fileService.GetFileRecord(ctx, file_id)
 	if err != nil {
 		return "", err
 	}

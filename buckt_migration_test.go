@@ -22,6 +22,7 @@ type memBackend struct {
 	mu   sync.Mutex
 	objs map[string][]byte
 	puts int // total Put calls, to detect wasteful re-uploads
+	gets int // total Get calls, to detect needless downloads
 	// failPuts makes the next N Put calls fail, to exercise retry behaviour.
 	failPuts int
 }
@@ -50,9 +51,16 @@ func (m *memBackend) putCalls() int {
 	return m.puts
 }
 
+func (m *memBackend) getCalls() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.gets
+}
+
 func (m *memBackend) Get(_ context.Context, path string) ([]byte, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.gets++
 	d, ok := m.objs[path]
 	if !ok {
 		return nil, fmt.Errorf("mem: not found: %s", path)

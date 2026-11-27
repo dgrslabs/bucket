@@ -10,6 +10,12 @@ API removals.
 
 ### 🐛 Fixed
 
+- **Presigning no longer downloads the file** (`Client.PresignedURL`). It looked
+  the file up with `GetFile`, which also reads the bytes, so on S3/R2 every
+  presigned URL first downloaded the whole object only to read its path, and
+  held it in memory while the URL was signed. It now reads only the record
+  (the new `FileService.GetFileRecord`). A record whose object is missing still
+  gets a URL; the storage answers 404 for it.
 - **S3/R2 objects now get a Content-Type** (`cloud/aws`). `S3Backend.Put` never
   set one, so after cutting over to S3 every presigned download came back as
   generic binary. `Put` now picks the type from the key's extension (a built-in
